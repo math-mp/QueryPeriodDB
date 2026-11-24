@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grade Escolar</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #6b7385;
+    --line: #e3e6ec; --accent: #2f6fed; --accent-soft: #e8efff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171d; --card: #1d222b; --text: #e8ebf2; --muted: #98a1b3;
+      --line: #2e3542; --accent: #6b9bff; --accent-soft: #232e4a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .tab { background: none; border: 0; padding: 10px 16px; font: inherit; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .panel { display: none; } .panel.active { display: block; }
+  .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  select, input[type=search] { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  input[type=search] { width: 100%; padding: 12px 14px; font-size: 16px; }
+  select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+  .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
+  button.limpar { background: none; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  .scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--card); }
+  tr:last-child td { border-bottom: 0; }
+  .cell small, td small { display: block; color: var(--muted); }
+  .grid th:first-child, .grid td:first-child { white-space: nowrap; color: var(--muted); }
+  .vazio { padding: 28px; text-align: center; color: var(--muted); }
+  .erro { background: #fde8e8; color: #8a1c1c; padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
+  @media (prefers-color-scheme: dark) { .erro { background: #3a1d1d; color: #ffb4b4; } }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .grupo { margin-bottom: 20px; }
+  .grupo h2 { font-size: 14px; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
+  .grupo h2 code { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .res { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; }
+  .res small { display: block; color: var(--muted); }
+  .mais { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+  .bar .acoes { display: flex; gap: 12px; align-items: center; }
+  .bar label.inline { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; }
+  .bar label.inline select { padding: 5px 8px; font-size: 13px; }
+  .gcard { margin-bottom: 14px; }
+  .gcard > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 11px 14px; font-weight: 600; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .gcard > summary::-webkit-details-marker { display: none; }
+  .gcard > summary::before { content: "▸"; color: var(--muted); margin-right: 8px; display: inline-block; transition: transform .15s; }
+  .gcard[open] > summary::before { transform: rotate(90deg); }
+  .gcard > summary .t { flex: 1; }
+  .gcard > summary .n { font-weight: 400; font-size: 13px; color: var(--muted); }
+  .gcard[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .gcard .scroll { border-top: 0; border-radius: 0 0 10px 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>📚 Grade Escolar</h1>
+  <div id="erro" class="erro"></div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="principal" role="tab">Grade principal</button>
+    <button class="tab" data-tab="avancada" role="tab">Consulta avançada</button>
+  </div>
+
+  <!-- ===================== ABA 1: GRADE PRINCIPAL ===================== -->
+  <section id="principal" class="panel active">
+    <div class="filters">
+      <label>Ano <select id="f-ano"></select></label>
+      <label>Turno <select id="f-turno"></select></label>
+      <label>Grupo <select id="f-grupo"></select></label>
+      <label>Professor <select id="f-professor"></select></label>
+      <label>Disciplina <select id="f-disciplina"></select></label>
+      <label>Dia da semana <select id="f-dia"></select></label>
+    </div>
+    <div class="bar">
+      <span id="contagem"></span>
+      <span class="acoes">
+        <label class="inline">Agrupar por
+          <select id="f-agrupar">
+            <option value="turma">Turma</option>
+            <option value="dia">Dia da semana</option>
+            <option value="professor">Professor</option>
+            <option value="disciplina">Disciplina</option>
+          </select>
+        </label>
+        <button class="limpar" id="limpar">Limpar filtros</button>
+      </span>
+    </div>
+    <div id="resultado"></div>
+  </section>
+
+  <!-- ===================== ABA 2: CONSULTA AVANÇADA ===================== -->
+  <section id="avancada" class="panel">
+    <input type="search" id="busca" placeholder="Pesquise por professor, disciplina, turma, dia... (ex.: mariya, matematica, 1 manha A, segunda)" autocomplete="off">
+    <div class="chips" id="chips"></div>
+    <div id="busca-resultado"></div>
+  </section>
+</main>
+
+<script>
+/* ===================== Helpers ===================== */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DIAS = { 2: 'Segunda', 3: 'Terça', 4: 'Quarta', 5: 'Quinta', 6: 'Sexta' };
+const nomeTurno = (t) => (t === 'Manha' ? 'Manhã' : t);
+const hhmm = (t) => String(t || '').slice(0, 5);
+
+async function api(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(`${path} → ${r.status}`);
+  return r.json();
+}
+function mostrarErro(msg) {
+  const e = $('#erro');
+  e.textContent = msg;
+  e.style.display = 'block';
+}
+
+const dados = { professores: [], disciplinas: [], turmas: [], horarios: [], grade: [] };
+
+/* ===================== Abas ===================== */
+document.querySelectorAll('.tab').forEach((btn) =>
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === btn.dataset.tab));
+    if (btn.dataset.tab === 'avancada') $('#busca').focus();
+  })
+);
+
+/* ===================== Carga inicial ===================== */
+async function carregar() {
+  try {
+    const [professores, disciplinas, turmas, horarios, grade] = await Promise.all([
+      api('/professores'), api('/disciplinas'), api('/turmas'), api('/horarios'), api('/grade?expandir=0'),
+    ]);
+    Object.assign(dados, { professores, disciplinas, turmas, horarios, grade });
+  } catch (e) {
+    mostrarErro('Não foi possível carregar a API. Abra esta página por http://localhost:3000 com o servidor e o MySQL do XAMPP ligados. (' + e.message + ')');
+    return;
+  }
+  preencherFiltros();
+  consultarGrade();
+  montarIndice();
+  buscar();
+}
+
+/* ===================== ABA 1: Grade principal ===================== */
+function opcoes(sel, itens, rotuloTodos) {
+  sel.innerHTML = `<option value="">${esc(rotuloTodos)}</option>` +
+    itens.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+}
+const unicos = (arr) => [...new Set(arr)];
+
+function preencherFiltros() {
+  opcoes($('#f-ano'), unicos(dados.turmas.map((t) => t.ano)).sort().map((a) => [a, `${a}º ano`]), 'Todos');
+  opcoes($('#f-turno'), unicos(dados.turmas.map((t) => t.turno)).map((t) => [t, nomeTurno(t)]), 'Todos');
+  opcoes($('#f-grupo'), unicos(dados.turmas.map((t) => t.grupo)).sort().map((g) => [g, `Grupo ${g}`]), 'Todos');
+  opcoes($('#f-professor'), dados.professores.map((p) => [p.id, p.nome]), 'Todos');
+  opcoes($('#f-disciplina'), dados.disciplinas.map((d) => [d.id, d.nome]), 'Todas');
+  opcoes($('#f-dia'), unicos(dados.horarios.map((h) => h.dia_semana)).sort().map((d) => [d, DIAS[d]]), 'Todos');
+}
+
+const FILTROS = ['ano', 'turno', 'grupo', 'professor', 'disciplina', 'dia'];
+FILTROS.forEach((f) => $('#f-' + f).addEventListener('change', consultarGrade));
+$('#limpar').addEventListener('click', () => {
+  FILTROS.forEach((f) => ($('#f-' + f).value = ''));
+  consultarGrade();
+});
+
+let linhasAtuais = [];
+let filtrosAtuais = {};
+
+async function consultarGrade() {
+  const v = Object.fromEntries(FILTROS.map((f) => [f, $('#f-' + f).value]));
+  const qs = new URLSearchParams();
+  if (v.ano) qs.set('ano', v.ano);
+  if (v.turno) qs.set('turno', v.turno);
+  if (v.grupo) qs.set('grupo', v.grupo);
+  if (v.professor) qs.set('professor_id', v.professor);
+  if (v.disciplina) qs.set('disciplina_id', v.disciplina);
+
+  let linhas;
+  try {
+    linhas = await api('/grade' + (qs.toString() ? '?' + qs : ''));
+  } catch (e) {
+    mostrarErro('Erro ao consultar a grade: ' + e.message);
+    return;
+  }
+  // a API não filtra por dia; filtramos aqui
+  if (v.dia) linhas = linhas.filter((l) => String(l.dia_semana) === v.dia);
+
+  linhasAtuais = linhas;
+  filtrosAtuais = v;
+  renderGrade();
+}
+$('#f-agrupar').addEventListener('change', renderGrade);
+
+function renderGrade() {
+  const linhas = linhasAtuais, v = filtrosAtuais;
+  const modo = $('#f-agrupar').value;
+
+  if (!linhas.length) {
+    $('#contagem').textContent = '0 aula(s) encontrada(s)';
+    $('#resultado').innerHTML = '<div class="scroll"><div class="vazio">Nenhuma aula encontrada para esses filtros.</div></div>';
+    return;
+  }
+
+  // turma completa + agrupamento por turma = quadro semanal
+  if (v.ano && v.turno && v.grupo && modo === 'turma') {
+    $('#contagem').textContent = `${linhas.length} aula(s) encontrada(s)`;
+    $('#resultado').innerHTML = renderGridSemanal(linhas, v.turno, v.dia);
+    return;
+  }
+
+  const grupos = agrupar(linhas, modo);
+  $('#contagem').textContent = `${linhas.length} aula(s) em ${grupos.length} grupo(s)`;
+  $('#resultado').innerHTML = grupos.map((g) => renderCard(g, modo)).join('');
+}
+
+// ---- agrupamento em blocos (um card por turma / dia / professor / disciplina) ----
+const CHAVE = {
+  turma: (l) => `${l.ano}|${l.turno}|${l.grupo}`,
+  dia: (l) => l.dia_semana,
+  professor: (l) => l.professor_id,
+  disciplina: (l) => l.disciplina_id,
+};
+const TITULO = {
+  turma: (l) => `${l.ano}º ano · ${nomeTurno(l.turno)} · Grupo ${l.grupo}`,
+  dia: (l) => l.dia,
+  professor: (l) => l.professor,
+  disciplina: (l) => l.disciplina,
+};
+
+function agrupar(linhas, modo) {
+  const mapa = new Map();
+  linhas.forEach((l) => {
+    const k = CHAVE[modo](l);
+    if (!mapa.has(k)) mapa.set(k, { chave: k, titulo: TITULO[modo](l), linhas: [] });
+    mapa.get(k).linhas.push(l);
+  });
+  const grupos = [...mapa.values()];
+  if (modo === 'dia') grupos.sort((a, b) => a.chave - b.chave);
+  else if (modo !== 'turma') grupos.sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'));
+  grupos.forEach((g) => g.linhas.sort((a, b) =>
+    a.dia_semana - b.dia_semana || a.numero_aula - b.numero_aula ||
+    a.ano - b.ano || a.turno.localeCompare(b.turno) || a.grupo.localeCompare(b.grupo)));
+  return grupos;
+}
+
+const COLUNAS = [
+  { id: 'turma', nome: 'Turma', cel: (l) => `${esc(l.ano)}º ano · Grupo ${esc(l.grupo)}<small>${esc(nomeTurno(l.turno))}</small>` },
+  { id: 'dia', nome: 'Dia', cel: (l) => esc(l.dia) },
+  { id: 'aula', nome: 'Aula', cel: (l) => `${esc(l.numero_aula)}ª aula<small>${esc(hhmm(l.hora_inicio))}–${esc(hhmm(l.hora_fim))}</small>` },
+  { id: 'disciplina', nome: 'Disciplina', cel: (l) => `${esc(l.disciplina)}${l.classe_inteira ? '<small>Classe inteira (com o grupo A)</small>' : ''}` },
+  { id: 'professor', nome: 'Professor', cel: (l) => esc(l.professor) },
+];
+
+function renderCard(g, modo) {
+  const cols = COLUNAS.filter((c) => c.id !== modo);   // a coluna do agrupamento já está no título
+  const cab = cols.map((c) => `<th>${c.nome}</th>`).join('');
+  const corpo = g.linhas.map((l) => `<tr>${cols.map((c) => `<td>${c.cel(l)}</td>`).join('')}</tr>`).join('');
+  return `<details class="gcard" open>
+    <summary><span class="t">${esc(g.titulo)}</span><span class="n">${g.linhas.length} aula(s)</span></summary>
+    <div class="scroll"><table><thead><tr>${cab}</tr></thead><tbody>${corpo}</tbody></table></div>
+  </details>`;
+}
+
+// Quando ano + turno + grupo estão escolhidos, mostra a grade semanal (aulas × dias)
+function renderGridSemanal(linhas, turno, diaFiltro) {
+  const dias = diaFiltro ? [Number(diaFiltro)] : [2, 3, 4, 5, 6];
+  // linhas do quadro = aulas que realmente aparecem nos resultados
+  const horas = {};
+  linhas.forEach((l) => {
+    horas[l.numero_aula] = horas[l.numero_aula] || `${hhmm(l.hora_inicio)}–${hhmm(l.hora_fim)}`;
+  });
+  const aulas = Object.keys(horas).map(Number).sort((a, b) => a - b);
+  const mapa = {};
+  linhas.forEach((l) => (mapa[`${l.dia_semana}-${l.numero_aula}`] = l));
+
+  const corpo = aulas.map((n) => `<tr><td>${n}ª aula<small>${esc(horas[n])}</small></td>` +
+    dias.map((d) => {
+      const l = mapa[`${d}-${n}`];
+      return `<td class="cell">${l ? `<strong>${esc(l.disciplina)}</strong><small>${esc(l.professor)}${l.classe_inteira ? ' · classe inteira' : ''}</small>` : '<small>—</small>'}</td>`;
+    }).join('') + '</tr>').join('');
+
+  return `<div class="scroll"><table class="grid">
+    <thead><tr><th></th>${dias.map((d) => `<th>${DIAS[d]}</th>`).join('')}</tr></thead>
+    <tbody>${corpo}</tbody></table></div>`;
+}
+
+/* ===================== ABA 2: Consulta avançada ===================== */
+const CATEGORIAS = {
+  professores: 'Professores',
+  disciplinas: 'Disciplinas',
+  turmas: 'Turmas',
+  horarios: 'Horários',
+  grade: 'Aulas na grade',
+};
+let indice = [];
+let catAtiva = 'todas';
+
+// minúsculas, sem acento, sem º/ª
+const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[ºª°]/g, '').toLowerCase();
+const palavras = (s) => norm(s).split(/[^a-z0-9]+/).filter(Boolean);
+
+function montarIndice() {
+  const aulasProf = {}, aulasDisc = {};
+  dados.grade.forEach((g) => {
+    aulasProf[g.professor_id] = (aulasProf[g.professor_id] || 0) + 1;
+    aulasDisc[g.disciplina_id] = (aulasDisc[g.disciplina_id] || 0) + 1;
+  });
+
+  indice = [];
+  dados.professores.forEach((p) => indice.push({
+    cat: 'professores', titulo: p.nome, sub: `${aulasProf[p.id] || 0} aula(s) na grade`, texto: p.nome,
+  }));
+  dados.disciplinas.forEach((d) => indice.push({
+    cat: 'disciplinas', titulo: d.nome, sub: `${aulasDisc[d.id] || 0} aula(s) na grade`, texto: d.nome,
+  }));
+  dados.turmas.forEach((t) => indice.push({
+    cat: 'turmas', titulo: `${t.ano}º ano ${t.grupo}`, sub: nomeTurno(t.turno),
+    texto: `turma ${t.ano} ano ${t.grupo} ${t.turno}`,
+  }));
+  dados.horarios.forEach((h) => indice.push({
+    cat: 'horarios', titulo: `${DIAS[h.dia_semana]} · ${h.numero_aula}ª aula`,
+    sub: `${nomeTurno(h.turno)} · ${hhmm(h.hora_inicio)}–${hhmm(h.hora_fim)}`,
+    texto: `${DIAS[h.dia_semana]} ${h.numero_aula} aula ${h.turno} ${hhmm(h.hora_inicio)}`,
+  }));
+  dados.grade.forEach((g) => indice.push({
+    cat: 'grade', titulo: `${g.disciplina} — ${g.professor}`,
+    sub: `${g.ano}º ${g.grupo} · ${nomeTurno(g.turno)} · ${g.dia} · ${g.numero_aula}ª aula (${hhmm(g.hora_inicio)})`,
+    texto: `${g.disciplina} ${g.professor} ${g.ano} ano ${g.grupo} ${g.turno} ${g.dia} ${g.numero_aula} aula`,
+  }));
+  indice.forEach((e) => (e.palavras = palavras(e.texto)));
+}
+
+// distância de Levenshtein (para tolerar erros de digitação)
+function lev(a, b) {
+  const m = a.length, n = b.length;
+  if (Math.abs(m - n) > 2) return 3;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+// pontuação de um termo digitado contra as palavras de uma entrada (0 = não combina)
+function pontuarTermo(termo, palavrasEntrada) {
+  let melhor = 0;
+  for (const w of palavrasEntrada) {
+    let s = 0;
+    if (w === termo) s = 10;
+    else if (termo.length >= 3 && w.startsWith(termo)) s = 8;
+    else if (termo.length >= 3 && w.includes(termo)) s = 5;
+    else if (termo.length >= 4) {
+      const tol = termo.length >= 7 ? 2 : 1;
+      const d = Math.min(lev(termo, w), lev(termo, w.slice(0, termo.length)));
+      if (d <= tol) s = 4 - d;
+    }
+    if (s > melhor) melhor = s;
+  }
+  return melhor;
+}
+
+function buscar() {
+  const termos = palavras($('#busca').value);
+  const alvo = $('#busca-resultado');
+
+  if (!termos.length) {
+    $('#chips').innerHTML = '';
+    alvo.innerHTML = '<div class="vazio">Digite para pesquisar. A busca aceita aproximações e erros de digitação (ex.: "matematca", "mariya") e combina várias palavras (ex.: "1 manha A", "joao quarta").</div>';
+    return;
+  }
+
+  // todos os termos precisam combinar; soma das pontuações define a ordem
+  const achados = [];
+  for (const e of indice) {
+    let total = 0, ok = true;
+    for (const t of termos) {
+      const s = pontuarTermo(t, e.palavras);
+      if (!s) { ok = false; break; }
+      total += s;
+    }
+    if (ok) achados.push({ ...e, score: total });
+  }
+  achados.sort((a, b) => b.score - a.score || a.titulo.localeCompare(b.titulo, 'pt-BR'));
+
+  const porCat = {};
+  achados.forEach((a) => (porCat[a.cat] = (porCat[a.cat] || 0) + 1));
+  if (catAtiva !== 'todas' && !porCat[catAtiva]) catAtiva = 'todas';
+
+  // chips de categoria com contagem
+  const chips = [['todas', 'Todas', achados.length], ...Object.entries(CATEGORIAS).map(([k, l]) => [k, l, porCat[k] || 0])];
+  $('#chips').innerHTML = chips.map(([k, l, n]) =>
+    `<button class="chip ${k === catAtiva ? 'active' : ''}" data-cat="${k}">${esc(l)} (${n})</button>`).join('');
+  document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => { catAtiva = c.dataset.cat; buscar(); }));
+
+  if (!achados.length) {
+    alvo.innerHTML = '<div class="vazio">Nada encontrado para essa pesquisa.</div>';
+    return;
+  }
+
+  const LIMITE = 40;
+  alvo.innerHTML = Object.entries(CATEGORIAS)
+    .filter(([k]) => porCat[k] && (catAtiva === 'todas' || catAtiva === k))
+    .map(([k, rotulo]) => {
+      const lista = achados.filter((a) => a.cat === k);
+      return `<div class="grupo">
+        <h2>${esc(rotulo)} <code>/${k === 'grade' ? 'grade' : k}</code></h2>
+        ${lista.slice(0, LIMITE).map((a) => `<div class="res">${esc(a.titulo)}<small>${esc(a.sub)}</small></div>`).join('')}
+        ${lista.length > LIMITE ? `<div class="mais">+ ${lista.length - LIMITE} resultado(s) — refine a pesquisa</div>` : ''}
+      </div>`;
+    }).join('');
+}
+
+let timer;
+$('#busca').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(buscar, 150); });
+
+carregar();
+</script>
+</body>
+</html>
