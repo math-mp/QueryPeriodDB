@@ -238,7 +238,7 @@ textarea {
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--header-height) 1fr;
   grid-template-areas:
-    "sidebar header"
+    "header header"
     "sidebar main";
   min-height: 100vh;
 }
@@ -415,6 +415,7 @@ textarea {
   overflow-y: auto;
   position: sticky;
   top: var(--header-height);
+  align-self: start;
   height: calc(100vh - var(--header-height));
   display: flex;
   flex-direction: column;
@@ -547,6 +548,7 @@ textarea {
 
 .main {
   grid-area: main;
+  min-width: 0;
   padding: 32px 24px;
   overflow-y: auto;
 }

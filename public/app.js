@@ -400,7 +400,7 @@ function renderCard(g, modo) {
   const corpo = g.linhas.map(l => `<tr>${cols.map(c => `<td>${c.cel(l)}</td>`).join('')}</tr>`).join('');
 
   return `
-    <details class="accordion-item" open>
+    <details class="accordion-item">
       <summary class="accordion-header">
         <div class="accordion-title">
           <span class="accordion-icon">
