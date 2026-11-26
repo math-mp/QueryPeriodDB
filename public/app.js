@@ -12,6 +12,8 @@ const DIAS_ORDER = [2, 3, 4, 5, 6];
 
 const A_DEFINIR = 'A definir';
 
+const FILTROS_KEYS = ['ano', 'turno', 'grupo', 'professor', 'disciplina', 'dia'];
+
 const state = {
   theme: 'light',
   currentTab: 'schedule',
@@ -54,7 +56,7 @@ const $ = (selector, context = document) => context.querySelector(selector);
 const $$ = (selector, context = document) => Array.from(context.querySelectorAll(selector));
 
 const esc = (str) => String(str ?? '').replace(/[&<>"']/g, (c) => {
-  const map = { '&': '&', '<': '<', '>': '>', '"': '"', "'": "'" };
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   return map[c];
 });
 
@@ -72,12 +74,12 @@ async function api(path, options = {}) {
 
   try {
     const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers
       },
-      signal: controller.signal,
-      ...options
+      signal: controller.signal
     });
 
     clearTimeout(timeoutId);
@@ -351,14 +353,7 @@ function renderGrade() {
 
   const grupos = agrupar(linhasAtuais, modo);
   $('#grade-count').textContent = `${linhasAtuais.length} aula(s) em ${grupos.length} grupo(s)`;
-  container.innerHTML = grupos.map(g => renderCard(g, modo)).join('');
-
-  $$('#grade-resultado details').forEach(details => {
-    details.addEventListener('toggle', () => {
-      const icon = details.querySelector('.accordion-icon');
-      if (icon) icon.style.transform = details.open ? 'rotate(180deg)' : 'rotate(0deg)';
-    });
-  });
+  container.innerHTML = `<div class="accordion">${grupos.map(g => renderCard(g, modo)).join('')}</div>`;
 }
 
 const CHAVE = {
@@ -745,6 +740,62 @@ function atualizarAulasLivre() {
   if (atual && [...sel.options].some(o => o.value === atual && !o.disabled)) sel.value = atual;
 }
 
+// ---------- Preencher slot "A definir" ----------
+function slotsADefinir() {
+  return state.data.grade
+    .filter(g => g.professor === A_DEFINIR)
+    .sort((a, b) =>
+      a.ano - b.ano || a.turno.localeCompare(b.turno) || a.grupo.localeCompare(b.grupo) ||
+      a.dia_semana - b.dia_semana || a.numero_aula - b.numero_aula);
+}
+
+function atualizarSlotsDefinir() {
+  const sel = $('#d-slot');
+  if (!sel) return;
+  const atual = sel.value;
+  const slots = slotsADefinir();
+  const btn = $('#btn-definir');
+
+  if (!slots.length) {
+    sel.innerHTML = '<option value="">Nenhum slot "A definir" pendente</option>';
+    sel.disabled = true;
+    if (btn) btn.disabled = true;
+    atualizarProfDefinir();
+    return;
+  }
+
+  sel.disabled = false;
+  if (btn) btn.disabled = false;
+  sel.innerHTML = '<option value="">Selecione...</option>' + slots.map(g =>
+    `<option value="${esc(g.id)}">${esc(`${g.ano}º ano ${nomeTurno(g.turno)} · Grupo ${g.grupo} · ${g.dia} · ${aulaRotulo(g.numero_aula)} (${hhmm(g.hora_inicio)}) · ${g.disciplina}`)}</option>`
+  ).join('');
+  if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
+  atualizarProfDefinir();
+}
+
+function atualizarProfDefinir() {
+  const selProf = $('#d-professor');
+  const info = $('#d-info');
+  if (!selProf) return;
+  const slot = state.data.grade.find(g => String(g.id) === $('#d-slot')?.value);
+  const atual = selProf.value;
+  const reais = state.data.professores.filter(p => p.nome !== A_DEFINIR);
+
+  selProf.innerHTML = '<option value="">Selecione...</option>' + reais.map(p => {
+    const motivo = slot
+      ? ocupacao({ turno: slot.turno, dia: slot.dia_semana, aula: slot.numero_aula, profId: p.id, ignorarId: slot.id })
+      : '';
+    return `<option value="${esc(p.id)}"${motivo ? ' disabled' : ''}>${esc(p.nome + motivo)}</option>`;
+  }).join('');
+  if ([...selProf.options].some(o => o.value === atual && !o.disabled)) selProf.value = atual;
+
+  if (info) {
+    info.textContent = slot
+      ? `${slot.disciplina} · ${slot.ano}º ano ${nomeTurno(slot.turno)}, grupo ${slot.grupo} · ${slot.dia}, ${aulaRotulo(slot.numero_aula)}. Professores já ocupados neste horário aparecem desativados.`
+      : '';
+  }
+}
+
 const LIMITE_LISTA = 60;
 const chaveHorario = (g) => `${g.ano}|${g.turno}|${g.horario_id}`;
 
@@ -773,14 +824,24 @@ function celulaDisciplina(g) {
 
 function botoesAcao(g) {
   const b = (acao, rotulo, classe = '') =>
-    `<button class="table-action-btn ${classe}" data-acao="${acao}" data-tipo="${g.tipo}" data-id="${g.id}" aria-label="${rotulo}">
+    `<button type="button" class="table-action-btn ${classe}" data-acao="${acao}" data-tipo="${g.tipo}" data-id="${g.id}" data-tooltip="${esc(rotulo)}" aria-label="${esc(rotulo)}">
       ${getActionIcon(acao)}
     </button>`;
 
-  if (g.tipo === 'herdada') return b('editarB', 'Editar só para B') + b('excluirB', 'Excluir só do B', 'danger');
-  if (g.tipo === 'excecao') return b('restaurarB', 'Restaurar no B');
-  return b('editar', 'Editar') + b('excluir', 'Excluir', 'danger') +
-    (g.grupo === 'A' && g.bHerda ? b('excluirA', 'Excluir só do A', 'danger') : '');
+  if (g.tipo === 'herdada') {
+    return b('editarB', 'Editar só para o grupo B (o grupo A não muda)') +
+      b('excluirB', 'Excluir só para o grupo B (o grupo A mantém a aula)', 'danger');
+  }
+  if (g.tipo === 'excecao') return b('restaurarB', 'Restaurar a aula no grupo B (volta a herdar do grupo A)');
+
+  const afetaDois = g.grupo === 'A' && g.bHerda;
+  return b('editar', afetaDois ? 'Editar aula (vale para os grupos A e B)' : 'Editar aula') +
+    b('excluir',
+      afetaDois ? 'Excluir tudo: remove a aula dos grupos A e B (pede confirmação)'
+        : g.grupo === 'B' ? 'Excluir a aula própria do grupo B (pede confirmação)'
+        : 'Excluir a aula do grupo A (pede confirmação)',
+      'danger') +
+    (afetaDois ? b('excluirA', 'Excluir só para o grupo A (o grupo B mantém a aula)', 'danger') : '');
 }
 
 function getActionIcon(acao) {
@@ -852,7 +913,7 @@ function renderListaEdicao() {
               <td>${esc(aulaRotulo(g.numero_aula))}<small>${esc(hhmm(g.hora_inicio))}–${esc(hhmm(g.hora_fim))}</small></td>
               <td>${celulaDisciplina(g)}</td>
               <td>${g.tipo === 'excecao' ? '—' : esc(g.professor)}</td>
-              <td class="table-actions">${botoesAcao(g)}</td>
+              <td class="table-actions"><div class="table-actions-group">${botoesAcao(g)}</div></td>
             </tr>
           `).join('')}
         </tbody>
@@ -883,7 +944,9 @@ function abrirEditor(g) {
     atualizarAulasEdicao(g.numero_aula);
   }
 
-  $('#msg-edit').style.display = 'none';
+  const msg = $('#msg-edit');
+  if (msg) msg.style.display = 'none';
+  $('#e-editor').hidden = false;
   $('#e-editor').style.display = 'block';
   $('#e-editor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -891,6 +954,7 @@ function abrirEditor(g) {
 function fecharEditor() {
   state.editMode.editando = null;
   $('#e-editor').style.display = 'none';
+  $('#e-editor').hidden = true;
 }
 
 function atualizarAulasEdicao(preferida) {
@@ -993,7 +1057,43 @@ function opcoesAulas(turno, dia, filtro) {
   }).join('');
 }
 
+// ---------- Tooltip dos botões (data-tooltip) ----------
+function initTooltips() {
+  const tip = document.createElement('div');
+  tip.className = 'app-tooltip';
+  tip.setAttribute('role', 'tooltip');
+  document.body.appendChild(tip);
+  let alvo = null;
+
+  const esconder = () => { alvo = null; tip.classList.remove('visible'); };
+
+  const mostrar = (el) => {
+    alvo = el;
+    tip.textContent = el.dataset.tooltip;
+    tip.classList.add('visible');
+    const r = el.getBoundingClientRect();
+    const t = tip.getBoundingClientRect();
+    const margem = 8;
+    let top = r.top - t.height - margem;
+    if (top < margem) top = r.bottom + margem;
+    let left = r.left + r.width / 2 - t.width / 2;
+    left = Math.max(margem, Math.min(left, window.innerWidth - t.width - margem));
+    tip.style.top = `${top}px`;
+    tip.style.left = `${left}px`;
+  };
+
+  const achar = (e) => e.target.closest ? e.target.closest('[data-tooltip]') : null;
+
+  document.addEventListener('mouseover', (e) => { const el = achar(e); if (el && el !== alvo) mostrar(el); });
+  document.addEventListener('mouseout', (e) => { const el = achar(e); if (el && !el.contains(e.relatedTarget)) esconder(); });
+  document.addEventListener('focusin', (e) => { const el = achar(e); if (el) mostrar(el); });
+  document.addEventListener('focusout', esconder);
+  document.addEventListener('click', esconder);
+  window.addEventListener('scroll', esconder, true);
+}
+
 function initEventListeners() {
+  initTooltips();
   $('#theme-toggle')?.addEventListener('click', toggleTheme);
   $('#sidebar-toggle')?.addEventListener('click', toggleSidebar);
   $('.sidebar-overlay')?.addEventListener('click', closeSidebar);
@@ -1059,7 +1159,6 @@ function initEventListeners() {
   });
 
   // Filtros da grade
-  const FILTROS_KEYS = ['ano', 'turno', 'grupo', 'professor', 'disciplina', 'dia'];
   FILTROS_KEYS.forEach(f => {
     const el = $(`#f-${f}`);
     if (el) el.addEventListener('change', consultarGrade);
@@ -1096,8 +1195,8 @@ function initEventListeners() {
     c.addEventListener('click', () => {
       $$('#modo-grade .chip').forEach(x => x.classList.toggle('active', x === c));
       state.editMode.modoGrade = c.dataset.modo;
-      $('#modo-definir').style.display = c.dataset.modo === 'definir' ? '' : 'none';
-      $('#modo-livre').style.display = c.dataset.modo === 'livre' ? '' : 'none';
+      $('#modo-definir').hidden = c.dataset.modo !== 'definir';
+      $('#modo-livre').hidden = c.dataset.modo !== 'livre';
       // Atualizar aria-checked
       $$('#modo-grade .chip').forEach(x => x.setAttribute('aria-checked', x === c));
     });
@@ -1215,7 +1314,12 @@ function init() {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
 
-  initEventListeners();
+  try {
+    initEventListeners();
+  } catch (e) {
+    console.error('Falha ao iniciar os eventos:', e);
+    showToast('Erro', 'Falha ao iniciar a interface: ' + e.message, 'error');
+  }
   carregarDadosIniciais();
 }
 

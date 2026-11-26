@@ -267,7 +267,7 @@ textarea {
   top: 0;
   z-index: 100;
   backdrop-filter: blur(20px);
-  background: rgba(var(--surface), 0.9);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
 }
 
 .header-left {
@@ -972,19 +972,29 @@ textarea {
   margin-top: 2px;
 }
 
+/* A <td> continua sendo célula de tabela (display: table-cell). Antes ela era
+   display:flex, o que a tirava da tabela e quebrava a linha divisória da linha. */
 .table-actions {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.table-actions-group {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  white-space: nowrap;
 }
 
 .table-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 32px;
   width: 32px;
   height: 32px;
+  min-width: 32px;
+  padding: 0;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   transition: all var(--transition-fast);
@@ -1003,6 +1013,33 @@ textarea {
 .table-action-btn svg {
   width: 16px;
   height: 16px;
+  flex: 0 0 16px;
+  pointer-events: none;
+}
+
+/* Tooltip dos botões de ação (posicionado por JS com position: fixed,
+   para não ser cortado pelo overflow da .table-wrapper) */
+.app-tooltip {
+  position: fixed;
+  z-index: 2000;
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--text);
+  color: var(--surface);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .badge {
@@ -1648,6 +1685,11 @@ textarea {
   height: 16px;
 }
 
+/* garante que o atributo hidden funcione mesmo com display definido em classes */
+[hidden]:not(.modal-overlay) {
+  display: none !important;
+}
+
 .loading-overlay {
   position: absolute;
   inset: 0;
@@ -2066,8 +2108,18 @@ textarea {
   transition: transform var(--transition-base);
 }
 
-.accordion-item.open .accordion-icon {
+.accordion-item.open .accordion-icon,
+.accordion-item[open] .accordion-icon {
   transform: rotate(180deg);
+}
+
+/* <summary> nativo: remove o marcador padrão (o ícone próprio já faz esse papel) */
+summary.accordion-header {
+  list-style: none;
+}
+
+summary.accordion-header::-webkit-details-marker {
+  display: none;
 }
 
 .accordion-icon svg {
@@ -2083,6 +2135,12 @@ textarea {
 
 .accordion-item.open .accordion-content {
   max-height: 1000px;
+  padding: 0 20px 20px;
+}
+
+/* o HTML usa <details>, que sinaliza abertura pelo atributo [open], não pela classe .open */
+.accordion-item[open] > .accordion-content {
+  max-height: none;
   padding: 0 20px 20px;
 }
 
