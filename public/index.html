@@ -25,7 +25,7 @@
   .panel { display: none; } .panel.active { display: block; }
   .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  select, input[type=search] { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  select, input[type=search], input[type=text] { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
   input[type=search] { width: 100%; padding: 12px 14px; font-size: 16px; }
   select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
@@ -52,6 +52,27 @@
   .bar .acoes { display: flex; gap: 12px; align-items: center; }
   .bar label.inline { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; }
   .bar label.inline select { padding: 5px 8px; font-size: 13px; }
+  .form { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .form h2 { font-size: 15px; margin: 0 0 12px; }
+  .form .linha { display: flex; gap: 10px; }
+  .form .linha input { flex: 1; }
+  .dica { margin: 4px 0 14px; font-size: 13px; color: var(--muted); }
+  button.primario { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font: inherit; cursor: pointer; }
+  button.primario:hover { filter: brightness(1.08); }
+  .msg { display: none; margin-top: 12px; padding: 9px 12px; border-radius: 8px; font-size: 14px; }
+  .msg.ok { background: rgba(46,160,67,.15); color: #1a7f37; }
+  .msg.err { background: rgba(218,54,51,.14); color: #b42318; }
+  @media (prefers-color-scheme: dark) { .msg.ok { color: #56d364; } .msg.err { color: #ff9b94; } }
+  button.mini { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+  button.mini + button.mini { margin-left: 6px; }
+  button.mini.perigo { color: #b42318; border-color: rgba(218,54,51,.45); }
+  @media (prefers-color-scheme: dark) { button.mini.perigo { color: #ff9b94; } }
+  td.acoes { white-space: nowrap; text-align: right; }
+  tr.excecao td { opacity: .6; }
+  .editor { border: 1px solid var(--accent); border-radius: 10px; padding: 14px; margin: 4px 0 16px; }
+  .editor h3 { font-size: 14px; margin: 0 0 12px; }
+  .editor .botoes { display: flex; gap: 10px; }
+  .form .chips { margin: 0 0 14px; }
   .gcard { margin-bottom: 14px; }
   .gcard > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px;
     padding: 11px 14px; font-weight: 600; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
@@ -72,6 +93,7 @@
   <div class="tabs" role="tablist">
     <button class="tab active" data-tab="principal" role="tab">Grade principal</button>
     <button class="tab" data-tab="avancada" role="tab">Consulta avançada</button>
+    <button class="tab" data-tab="adicoes" role="tab">Adições</button>
   </div>
 
   <!-- ===================== ABA 1: GRADE PRINCIPAL ===================== -->
@@ -95,6 +117,8 @@
             <option value="disciplina">Disciplina</option>
           </select>
         </label>
+        <button class="limpar" id="expandir">Expandir tudo</button>
+        <button class="limpar" id="recolher">Recolher tudo</button>
         <button class="limpar" id="limpar">Limpar filtros</button>
       </span>
     </div>
@@ -106,6 +130,84 @@
     <input type="search" id="busca" placeholder="Pesquise por professor, disciplina, turma, dia... (ex.: mariya, matematica, 1 manha A, segunda)" autocomplete="off">
     <div class="chips" id="chips"></div>
     <div id="busca-resultado"></div>
+  </section>
+
+  <!-- ===================== ABA 3: ADIÇÕES ===================== -->
+  <section id="adicoes" class="panel">
+
+    <!-- 1 · Adicionar professor -->
+    <div class="form">
+      <h2>1 · Adicionar professor</h2>
+      <div class="linha">
+        <input type="text" id="n-nome" placeholder="Nome do professor (ex.: Maria S. Silva)" autocomplete="off">
+        <button class="primario" id="btn-prof">Adicionar</button>
+      </div>
+      <div class="msg" id="msg-prof"></div>
+    </div>
+
+    <!-- 2 · Adicionar à grade -->
+    <div class="form">
+      <h2>2 · Adicionar à grade</h2>
+      <div class="chips" id="modo-grade">
+        <button class="chip active" data-modo="definir">Preencher slot "A definir"</button>
+        <button class="chip" data-modo="livre">Nova aula em horário livre</button>
+      </div>
+
+      <div id="modo-definir">
+        <div class="filters" style="grid-template-columns: minmax(260px, 2fr) minmax(200px, 1fr)">
+          <label>Slot a definir <select id="d-slot"></select></label>
+          <label>Professor <select id="d-professor"></select></label>
+        </div>
+        <p class="dica" id="d-info"></p>
+        <button class="primario" id="btn-definir">Atribuir professor ao slot</button>
+        <div class="msg" id="msg-definir"></div>
+      </div>
+
+      <div id="modo-livre" style="display:none">
+        <div class="filters">
+          <label>Professor <select id="a-professor"></select></label>
+          <label>Disciplina <select id="a-disciplina"></select></label>
+          <label>Ano <select id="a-ano"></select></label>
+          <label>Turno <select id="a-turno"></select></label>
+          <label>Grupo <select id="a-grupo"></select></label>
+          <label>Dia da semana <select id="a-dia"></select></label>
+          <label>Aula <select id="a-aula"></select></label>
+        </div>
+        <p class="dica">Aulas da classe inteira vão no <strong>Grupo A</strong> (o grupo B as herda automaticamente). Use o Grupo B só quando ele tiver professor ou disciplina diferente. Horários já ocupados aparecem desativados.</p>
+        <button class="primario" id="btn-atribuir">Adicionar aula</button>
+        <div class="msg" id="msg-aula"></div>
+      </div>
+    </div>
+
+    <!-- 3 · Editar / excluir -->
+    <div class="form">
+      <h2>3 · Editar ou excluir atribuição</h2>
+      <div class="filters">
+        <label>Ano <select id="e-ano"></select></label>
+        <label>Turno <select id="e-turno"></select></label>
+        <label>Grupo <select id="e-grupo"></select></label>
+        <label>Dia da semana <select id="e-dia"></select></label>
+        <label>Professor <select id="e-professor"></select></label>
+      </div>
+
+      <div class="editor" id="e-editor" style="display:none">
+        <h3 id="e-titulo"></h3>
+        <div class="filters">
+          <label>Professor <select id="x-professor"></select></label>
+          <label>Disciplina <select id="x-disciplina"></select></label>
+          <label>Dia da semana <select id="x-dia"></select></label>
+          <label>Aula <select id="x-aula"></select></label>
+        </div>
+        <div class="botoes">
+          <button class="primario" id="btn-salvar">Salvar alterações</button>
+          <button class="limpar" id="btn-cancelar">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="msg" id="msg-edit" style="margin: 0 0 12px"></div>
+      <div id="e-lista"></div>
+      <p class="dica">As aulas da classe inteira ficam gravadas no Grupo A e o Grupo B as herda. Para mudar algo <strong>só no B</strong>, use os botões das linhas do Grupo B marcadas como "Herdada do grupo A": <em>Editar só p/ B</em> cria uma aula própria do B (o A não muda) e <em>Excluir só p/ B</em> tira a aula apenas do B. Nas linhas do Grupo A, <em>Editar</em> e <em>Excluir</em> valem para o A e para o B que a herda; <em>Excluir só p/ A</em> tira a aula do A e deixa o B com ela (como aula própria do B).</p>
+    </div>
   </section>
 </main>
 
@@ -128,7 +230,7 @@ function mostrarErro(msg) {
   e.style.display = 'block';
 }
 
-const dados = { professores: [], disciplinas: [], turmas: [], horarios: [], grade: [] };
+const dados = { professores: [], disciplinas: [], turmas: [], horarios: [], grade: [], excecoes: [] };
 
 /* ===================== Abas ===================== */
 document.querySelectorAll('.tab').forEach((btn) =>
@@ -142,15 +244,17 @@ document.querySelectorAll('.tab').forEach((btn) =>
 /* ===================== Carga inicial ===================== */
 async function carregar() {
   try {
-    const [professores, disciplinas, turmas, horarios, grade] = await Promise.all([
+    const [professores, disciplinas, turmas, horarios, grade, excecoes] = await Promise.all([
       api('/professores'), api('/disciplinas'), api('/turmas'), api('/horarios'), api('/grade?expandir=0'),
+      api('/grade/excecoes').catch(() => []),
     ]);
-    Object.assign(dados, { professores, disciplinas, turmas, horarios, grade });
+    Object.assign(dados, { professores, disciplinas, turmas, horarios, grade, excecoes });
   } catch (e) {
     mostrarErro('Não foi possível carregar a API. Abra esta página por http://localhost:3000 com o servidor e o MySQL do XAMPP ligados. (' + e.message + ')');
     return;
   }
   preencherFiltros();
+  preencherAdicoes();
   consultarGrade();
   montarIndice();
   buscar();
@@ -198,6 +302,13 @@ async function consultarGrade() {
     mostrarErro('Erro ao consultar a grade: ' + e.message);
     return;
   }
+  // aviso se o servidor ainda estiver rodando o routes.js antigo (sem o campo classe_inteira)
+  if (linhas.length && !('classe_inteira' in linhas[0])) {
+    mostrarErro('O servidor está rodando uma versão ANTIGA do routes.js, por isso o grupo B mostra só as aulas próprias. Pare o servidor (Ctrl + C) e rode npm start de novo.');
+  } else {
+    $('#erro').style.display = 'none';
+  }
+
   // a API não filtra por dia; filtramos aqui
   if (v.dia) linhas = linhas.filter((l) => String(l.dia_semana) === v.dia);
 
@@ -271,7 +382,7 @@ function renderCard(g, modo) {
   const cols = COLUNAS.filter((c) => c.id !== modo);   // a coluna do agrupamento já está no título
   const cab = cols.map((c) => `<th>${c.nome}</th>`).join('');
   const corpo = g.linhas.map((l) => `<tr>${cols.map((c) => `<td>${c.cel(l)}</td>`).join('')}</tr>`).join('');
-  return `<details class="gcard" open>
+  return `<details class="gcard">
     <summary><span class="t">${esc(g.titulo)}</span><span class="n">${g.linhas.length} aula(s)</span></summary>
     <div class="scroll"><table><thead><tr>${cab}</tr></thead><tbody>${corpo}</tbody></table></div>
   </details>`;
@@ -432,6 +543,451 @@ function buscar() {
 
 let timer;
 $('#busca').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(buscar, 150); });
+
+/* ===================== Expandir / recolher cards ===================== */
+$('#expandir').addEventListener('click', () => document.querySelectorAll('#resultado details').forEach((d) => (d.open = true)));
+$('#recolher').addEventListener('click', () => document.querySelectorAll('#resultado details').forEach((d) => (d.open = false)));
+
+/* ===================== ABA 3: Adições ===================== */
+const A_DEFINIR = 'A definir';
+let editando = null;   // aula da grade em edição
+
+async function enviar(path, corpo, metodo = 'POST') {
+  const r = await fetch(path, {
+    method: metodo,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo),
+  });
+  const resp = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(resp.erro || `Erro ${r.status}`);
+  return resp;
+}
+async function remover(path) {
+  const r = await fetch(path, { method: 'DELETE' });
+  if (!r.ok) {
+    const resp = await r.json().catch(() => ({}));
+    throw new Error(resp.erro || `Erro ${r.status}`);
+  }
+}
+function aviso(id, texto, ok) {
+  const e = $('#' + id);
+  e.textContent = texto;
+  e.className = 'msg ' + (ok ? 'ok' : 'err');
+  e.style.display = 'block';
+}
+
+/* ---- helpers ---- */
+const aulaRotulo = (n) => (n === 9 ? 'Contraturno' : `${n}ª aula`);
+const ordemGrade = (a, b) =>
+  a.ano - b.ano || a.turno.localeCompare(b.turno) || a.grupo.localeCompare(b.grupo) ||
+  a.dia_semana - b.dia_semana || a.numero_aula - b.numero_aula;
+const profsReais = () => dados.professores.filter((p) => p.nome !== A_DEFINIR);
+const ANOS = [1, 2, 3].map((a) => [a, `${a}º ano`]);
+const TURNOS = [['Manha', 'Manhã'], ['Tarde', 'Tarde']];
+const GRUPOS = [['A', 'Grupo A'], ['B', 'Grupo B']];
+const DIAS_OPC = [2, 3, 4, 5, 6].map((d) => [d, DIAS[d]]);
+
+// mantém a opção escolhida ao refazer a lista
+function repovoar(sel, itens, rotulo) {
+  const atual = sel.value;
+  opcoes(sel, itens, rotulo);
+  if ([...sel.options].some((o) => o.value === atual)) sel.value = atual;
+}
+
+// por que um horário está ocupado? ('' = livre). Ignora a própria aula em edição.
+function ocupacao({ turno, dia, aula, ano, grupo, profId, ignorarId }) {
+  const mesmo = (g) => g.id !== ignorarId && g.turno === turno && g.dia_semana === dia && g.numero_aula === aula;
+  if (ano && grupo) {
+    const t = dados.grade.find((g) => mesmo(g) && g.ano === ano && g.grupo === grupo);
+    if (t) return ` — turma já tem ${t.disciplina}`;
+  }
+  if (profId) {
+    const p = dados.grade.find((g) => mesmo(g) && g.professor_id === profId);
+    if (p) return ` — professor está no ${p.ano}º ano, grupo ${p.grupo}`;
+  }
+  return '';
+}
+
+// opções de aula (horários do turno/dia), desativando as ocupadas
+function opcoesAulas(turno, dia, filtro) {
+  const hs = dados.horarios
+    .filter((x) => x.turno === turno && x.dia_semana === dia)
+    .sort((a, b) => a.numero_aula - b.numero_aula);
+  if (!hs.length) return null;
+  return hs.map((x) => {
+    const motivo = ocupacao({ turno, dia, aula: x.numero_aula, ...filtro });
+    return `<option value="${x.numero_aula}"${motivo ? ' disabled' : ''}>${aulaRotulo(x.numero_aula)} (${hhmm(x.hora_inicio)}–${hhmm(x.hora_fim)})${esc(motivo)}</option>`;
+  }).join('');
+}
+
+/* ---- preenchimento ---- */
+function preencherAdicoes() {
+  opcoes($('#a-ano'), ANOS, 'Selecione...');
+  opcoes($('#a-turno'), TURNOS, 'Selecione...');
+  opcoes($('#a-grupo'), [['A', 'Grupo A (ou classe inteira)'], ['B', 'Grupo B']], 'Selecione...');
+  opcoes($('#a-dia'), DIAS_OPC, 'Selecione...');
+  opcoes($('#a-disciplina'), dados.disciplinas.map((d) => [d.id, d.nome]), 'Selecione...');
+
+  opcoes($('#e-ano'), ANOS, 'Todos');
+  opcoes($('#e-turno'), TURNOS, 'Todos');
+  opcoes($('#e-grupo'), GRUPOS, 'Todos');
+  opcoes($('#e-dia'), DIAS_OPC, 'Todos');
+
+  opcoes($('#x-dia'), DIAS_OPC, 'Selecione...');
+  opcoes($('#x-disciplina'), dados.disciplinas.map((d) => [d.id, d.nome]), 'Selecione...');
+  atualizarListasAdicoes();
+}
+
+function atualizarListasAdicoes() {
+  const todos = dados.professores.map((p) => [p.id, p.nome]);
+  repovoar($('#a-professor'), profsReais().map((p) => [p.id, p.nome]), 'Selecione...');
+  repovoar($('#e-professor'), todos, 'Todos');
+  repovoar($('#x-professor'), todos, 'Selecione...');
+  atualizarSlotsDefinir();
+  atualizarAulasLivre();
+  renderListaEdicao();
+}
+
+// recarrega dados do servidor e atualiza todas as abas
+async function recarregarDados() {
+  const [professores, disciplinas, grade, excecoes] = await Promise.all([
+    api('/professores'), api('/disciplinas'), api('/grade?expandir=0'),
+    api('/grade/excecoes').catch(() => []),
+  ]);
+  Object.assign(dados, { professores, disciplinas, grade, excecoes });
+  repovoar($('#f-professor'), professores.map((p) => [p.id, p.nome]), 'Todos');
+  atualizarListasAdicoes();
+  montarIndice();
+  buscar();
+}
+async function aposAlteracao() {
+  await recarregarDados();
+  await consultarGrade();
+}
+
+/* ---- 1 · novo professor ---- */
+async function adicionarProfessor() {
+  const nome = $('#n-nome').value.trim().replace(/\s+/g, ' ');
+  if (!nome) return aviso('msg-prof', 'Digite o nome do professor.', false);
+  const existente = dados.professores.find((p) => norm(p.nome) === norm(nome));
+  if (existente) return aviso('msg-prof', `"${existente.nome}" já está na lista.`, false);
+  try {
+    const novo = await enviar('/professores', { nome });
+    await recarregarDados();
+    $('#n-nome').value = '';
+    aviso('msg-prof', `Professor "${novo.nome}" adicionado.`, true);
+  } catch (e) {
+    aviso('msg-prof', e.message, false);
+  }
+}
+$('#btn-prof').addEventListener('click', adicionarProfessor);
+$('#n-nome').addEventListener('keydown', (e) => { if (e.key === 'Enter') adicionarProfessor(); });
+
+/* ---- 2 · adicionar à grade ---- */
+document.querySelectorAll('#modo-grade .chip').forEach((c) =>
+  c.addEventListener('click', () => {
+    document.querySelectorAll('#modo-grade .chip').forEach((x) => x.classList.toggle('active', x === c));
+    $('#modo-definir').style.display = c.dataset.modo === 'definir' ? '' : 'none';
+    $('#modo-livre').style.display = c.dataset.modo === 'livre' ? '' : 'none';
+  })
+);
+
+// 2a · slots cujo professor está "A definir"
+const pendentes = () => dados.grade.filter((g) => g.professor === A_DEFINIR).sort(ordemGrade);
+const rotuloSlot = (g) =>
+  `${g.ano}º ano · ${nomeTurno(g.turno)} · Grupo ${g.grupo} · ${g.dia} · ${aulaRotulo(g.numero_aula)} (${hhmm(g.hora_inicio)}–${hhmm(g.hora_fim)}) — ${g.disciplina}`;
+
+function atualizarSlotsDefinir() {
+  const sel = $('#d-slot');
+  const atual = sel.value;
+  const pend = pendentes();
+  sel.innerHTML = pend.length
+    ? '<option value="">Selecione...</option>' + pend.map((g) => `<option value="${g.id}">${esc(rotuloSlot(g))}</option>`).join('')
+    : '<option value="">Nenhum slot a definir</option>';
+  if (atual && [...sel.options].some((o) => o.value === atual)) sel.value = atual;
+  $('#d-info').textContent = pend.length
+    ? `${pend.length} slot(s) aguardando professor. Professores já ocupados no horário aparecem desativados.`
+    : 'Todas as aulas já têm professor. Para criar uma aula nova, use "Nova aula em horário livre".';
+  atualizarProfDefinir();
+}
+
+function atualizarProfDefinir() {
+  const sel = $('#d-professor');
+  const atual = sel.value;
+  const slot = dados.grade.find((g) => String(g.id) === $('#d-slot').value);
+  sel.innerHTML = '<option value="">Selecione...</option>' + profsReais().map((p) => {
+    const motivo = slot
+      ? ocupacao({ turno: slot.turno, dia: slot.dia_semana, aula: slot.numero_aula, profId: p.id, ignorarId: slot.id })
+      : '';
+    return `<option value="${p.id}"${motivo ? ' disabled' : ''}>${esc(p.nome)}${esc(motivo)}</option>`;
+  }).join('');
+  if (atual && [...sel.options].some((o) => o.value === atual && !o.disabled)) sel.value = atual;
+}
+$('#d-slot').addEventListener('change', atualizarProfDefinir);
+
+$('#btn-definir').addEventListener('click', async () => {
+  const slotId = Number($('#d-slot').value);
+  const profId = Number($('#d-professor').value);
+  if (!slotId || !profId) return aviso('msg-definir', 'Escolha o slot e o professor.', false);
+  const slot = dados.grade.find((g) => g.id === slotId);
+  const nome = $('#d-professor').selectedOptions[0].text;
+  try {
+    await enviar('/grade/' + slotId, { professor_id: profId }, 'PUT');
+    await aposAlteracao();
+    aviso('msg-definir', `${nome} atribuído: ${slot.disciplina} · ${slot.ano}º ano ${nomeTurno(slot.turno)}, grupo ${slot.grupo} · ${slot.dia}, ${aulaRotulo(slot.numero_aula)}.`, true);
+  } catch (e) {
+    aviso('msg-definir', e.message, false);
+  }
+});
+
+// 2b · nova aula em horário livre
+function atualizarAulasLivre() {
+  const sel = $('#a-aula');
+  const turno = $('#a-turno').value, dia = Number($('#a-dia').value);
+  const atual = sel.value;
+  if (!turno || !dia) { sel.innerHTML = '<option value="">Escolha turno e dia</option>'; return; }
+  const html = opcoesAulas(turno, dia, {
+    ano: Number($('#a-ano').value) || null,
+    grupo: $('#a-grupo').value,
+    profId: Number($('#a-professor').value) || null,
+  });
+  if (!html) { sel.innerHTML = '<option value="">Nenhum horário cadastrado</option>'; return; }
+  sel.innerHTML = '<option value="">Selecione...</option>' + html;
+  if (atual && [...sel.options].some((o) => o.value === atual && !o.disabled)) sel.value = atual;
+}
+['a-professor', 'a-ano', 'a-turno', 'a-grupo', 'a-dia'].forEach((id) =>
+  $('#' + id).addEventListener('change', atualizarAulasLivre));
+
+$('#btn-atribuir').addEventListener('click', async () => {
+  const campos = {
+    professor_id: Number($('#a-professor').value),
+    disciplina_id: Number($('#a-disciplina').value),
+    ano: Number($('#a-ano').value),
+    turno: $('#a-turno').value,
+    grupo: $('#a-grupo').value,
+    dia_semana: Number($('#a-dia').value),
+    numero_aula: Number($('#a-aula').value),
+  };
+  if (Object.values(campos).some((v) => !v)) return aviso('msg-aula', 'Preencha todos os campos.', false);
+  const texto = (id) => $('#' + id).selectedOptions[0].text;
+  const resumo = `${texto('a-professor')} → ${texto('a-disciplina')} · ${campos.ano}º ano ${nomeTurno(campos.turno)}, grupo ${campos.grupo} · ${DIAS[campos.dia_semana]}, ${aulaRotulo(campos.numero_aula)}`;
+  try {
+    await enviar('/grade', campos);
+    await aposAlteracao();
+    aviso('msg-aula', `Aula adicionada: ${resumo}`, true);
+  } catch (e) {
+    aviso('msg-aula', e.message, false);
+  }
+});
+
+/* ---- 3 · editar / excluir ---- */
+const LIMITE_LISTA = 60;
+const chaveHorario = (g) => `${g.ano}|${g.turno}|${g.horario_id}`;
+
+// aulas reais + o que o grupo B herda do A (ou deixou de ter, nas exceções)
+function linhasEdicao() {
+  const out = dados.grade.map((g) => ({ ...g, tipo: 'real' }));
+  const comB = new Set(dados.grade.filter((g) => g.grupo === 'B').map(chaveHorario));
+  const exc = new Map(dados.excecoes.map((e) => [chaveHorario(e), e]));
+  const reaisA = new Map(out.filter((g) => g.grupo === 'A').map((g) => [g.id, g]));
+  dados.grade.filter((g) => g.grupo === 'A').forEach((a) => {
+    const k = chaveHorario(a);
+    if (comB.has(k)) return;
+    const e = exc.get(k);
+    if (!e) reaisA.get(a.id).bHerda = true;      // o B herda esta aula do A
+    out.push({ ...a, grupo: 'B', tipo: e ? 'excecao' : 'herdada', excecao_id: e ? e.id : null });
+  });
+  return out;
+}
+
+function celulaDisciplina(g) {
+  if (g.tipo === 'herdada') return `${esc(g.disciplina)}<small>Herdada do grupo A</small>`;
+  if (g.tipo === 'excecao') return `<s>${esc(g.disciplina)}</s><small>Grupo B não tem esta aula (o A mantém)</small>`;
+  if (g.grupo === 'B') return `${esc(g.disciplina)}<small>Aula própria do grupo B</small>`;
+  return esc(g.disciplina);
+}
+function botoesAcao(g) {
+  const b = (acao, rotulo, classe = '') =>
+    `<button class="mini ${classe}" data-acao="${acao}" data-tipo="${g.tipo}" data-id="${g.id}">${rotulo}</button>`;
+  if (g.tipo === 'herdada') return b('editarB', 'Editar só p/ B') + b('excluirB', 'Excluir só p/ B', 'perigo');
+  if (g.tipo === 'excecao') return b('restaurarB', 'Restaurar no B');
+  return b('editar', 'Editar') + b('excluir', 'Excluir', 'perigo') +
+    (g.grupo === 'A' && g.bHerda ? b('excluirA', 'Excluir só p/ A', 'perigo') : '');
+}
+
+function renderListaEdicao() {
+  const f = {
+    ano: $('#e-ano').value, turno: $('#e-turno').value, grupo: $('#e-grupo').value,
+    dia: $('#e-dia').value, prof: $('#e-professor').value,
+  };
+  const lista = linhasEdicao()
+    .filter((g) =>
+      (!f.ano || String(g.ano) === f.ano) && (!f.turno || g.turno === f.turno) &&
+      (!f.grupo || g.grupo === f.grupo) && (!f.dia || String(g.dia_semana) === f.dia) &&
+      (!f.prof || (g.tipo !== 'excecao' && String(g.professor_id) === f.prof)))
+    .sort((a, b) => ordemGrade(a, b) || a.tipo.localeCompare(b.tipo));
+
+  if (!lista.length) {
+    $('#e-lista').innerHTML = '<div class="scroll"><div class="vazio">Nenhuma aula com esses filtros.</div></div>';
+    return;
+  }
+  const mostrar = lista.slice(0, LIMITE_LISTA);
+  $('#e-lista').innerHTML = `<div class="scroll"><table>
+    <thead><tr><th>Turma</th><th>Dia</th><th>Aula</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead>
+    <tbody>${mostrar.map((g) => `<tr class="${g.tipo === 'excecao' ? 'excecao' : ''}">
+      <td>${esc(g.ano)}º ano · Grupo ${esc(g.grupo)}<small>${esc(nomeTurno(g.turno))}</small></td>
+      <td>${esc(g.dia)}</td>
+      <td>${esc(aulaRotulo(g.numero_aula))}<small>${esc(hhmm(g.hora_inicio))}–${esc(hhmm(g.hora_fim))}</small></td>
+      <td>${celulaDisciplina(g)}</td>
+      <td>${g.tipo === 'excecao' ? '—' : esc(g.professor)}</td>
+      <td class="acoes">${botoesAcao(g)}</td></tr>`).join('')}</tbody></table></div>` +
+    (lista.length > LIMITE_LISTA
+      ? `<div class="mais">Mostrando ${LIMITE_LISTA} de ${lista.length} aulas — use os filtros para refinar.</div>` : '');
+}
+['e-ano', 'e-turno', 'e-grupo', 'e-dia', 'e-professor'].forEach((id) =>
+  $('#' + id).addEventListener('change', renderListaEdicao));
+
+$('#e-lista').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-acao]');
+  if (!b) return;
+  const g = linhasEdicao().find((x) => String(x.id) === b.dataset.id && x.tipo === b.dataset.tipo);
+  if (!g) return;
+  const acoes = { editar: abrirEditor, editarB: abrirEditor, excluir: excluirAula, excluirB: excluirSoB, excluirA: excluirSoA, restaurarB: restaurarB };
+  acoes[b.dataset.acao](g);
+});
+
+const resumoAula = (g) =>
+  `${g.ano}º ano ${nomeTurno(g.turno)}, grupo ${g.grupo} · ${g.dia}, ${aulaRotulo(g.numero_aula)} · ${g.disciplina}${g.professor ? ` (${g.professor})` : ''}`;
+
+function abrirEditor(g) {
+  editando = g;
+  const soB = g.tipo === 'herdada';
+  $('#e-titulo').textContent = (soB ? 'Editando SÓ para o grupo B (o grupo A não muda): ' : 'Editando: ') + resumoAula(g);
+  $('#x-professor').value = String(g.professor_id);
+  $('#x-disciplina').value = String(g.disciplina_id);
+  $('#x-dia').value = String(g.dia_semana);
+  $('#x-dia').disabled = soB;
+  $('#x-aula').disabled = soB;
+  if (soB) {
+    // aula própria do B fica no mesmo horário; só professor/disciplina mudam
+    $('#x-aula').innerHTML = `<option value="${g.numero_aula}">${aulaRotulo(g.numero_aula)} (${hhmm(g.hora_inicio)}–${hhmm(g.hora_fim)})</option>`;
+  } else {
+    atualizarAulasEdicao(g.numero_aula);
+  }
+  $('#msg-edit').style.display = 'none';
+  $('#e-editor').style.display = 'block';
+  $('#e-editor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function fecharEditor() {
+  editando = null;
+  $('#e-editor').style.display = 'none';
+}
+
+function atualizarAulasEdicao(preferida) {
+  if (!editando || editando.tipo === 'herdada') return;
+  const sel = $('#x-aula');
+  const dia = Number($('#x-dia').value);
+  const alvo = preferida ?? Number(sel.value);
+  if (!dia) { sel.innerHTML = '<option value="">Escolha o dia</option>'; return; }
+  const html = opcoesAulas(editando.turno, dia, {
+    ano: editando.ano, grupo: editando.grupo,
+    profId: Number($('#x-professor').value) || null, ignorarId: editando.id,
+  });
+  if (!html) { sel.innerHTML = '<option value="">Nenhum horário cadastrado</option>'; return; }
+  sel.innerHTML = '<option value="">Selecione...</option>' + html;
+  if (alvo && [...sel.options].some((o) => o.value === String(alvo) && !o.disabled)) sel.value = String(alvo);
+}
+$('#x-dia').addEventListener('change', () => atualizarAulasEdicao());
+$('#x-professor').addEventListener('change', () => atualizarAulasEdicao());
+$('#btn-cancelar').addEventListener('click', fecharEditor);
+
+$('#btn-salvar').addEventListener('click', async () => {
+  if (!editando) return;
+  const g = editando;
+  const professor_id = Number($('#x-professor').value);
+  const disciplina_id = Number($('#x-disciplina').value);
+
+  try {
+    if (g.tipo === 'herdada') {
+      // cria aula própria do grupo B no mesmo horário (o grupo A não muda)
+      if (!professor_id || !disciplina_id) return aviso('msg-edit', 'Preencha todos os campos.', false);
+      if (professor_id === g.professor_id) {
+        return aviso('msg-edit', 'Escolha um professor diferente do grupo A: o B já recebe esta aula com ele.', false);
+      }
+      await enviar('/grade', {
+        professor_id, disciplina_id, ano: g.ano, turno: g.turno, grupo: 'B',
+        dia_semana: g.dia_semana, numero_aula: g.numero_aula,
+      });
+      fecharEditor();
+      await aposAlteracao();
+      aviso('msg-edit', `Grupo B agora tem aula própria com ${$('#x-professor').selectedOptions[0].text}. O grupo A continua igual.`, true);
+    } else {
+      const corpo = { professor_id, disciplina_id, dia_semana: Number($('#x-dia').value), numero_aula: Number($('#x-aula').value) };
+      if (Object.values(corpo).some((v) => !v)) return aviso('msg-edit', 'Preencha todos os campos.', false);
+      await enviar('/grade/' + g.id, corpo, 'PUT');
+      fecharEditor();
+      await aposAlteracao();
+      aviso('msg-edit', 'Aula atualizada.', true);
+    }
+  } catch (e) {
+    aviso('msg-edit', e.message, false);
+  }
+});
+
+// excluir uma aula real (do A ou aula própria do B)
+async function excluirAula(g) {
+  const bHerda = g.grupo === 'A' &&
+    linhasEdicao().some((x) => x.tipo === 'herdada' && x.id === g.id);
+  const aviso1 = g.grupo === 'B'
+    ? '\n\nEsta é uma aula própria do grupo B. Ao excluir, o B volta a seguir a aula do grupo A (se houver).'
+    : bHerda ? '\n\nO grupo B herda esta aula e também deixará de tê-la. Para tirar de só um grupo, use "Excluir só p/ A" (nesta linha) ou "Excluir só p/ B" (na linha do grupo B).' : '';
+  if (!confirm(`Excluir esta aula da grade?\n\n${resumoAula(g)}${aviso1}`)) return;
+  try {
+    await remover('/grade/' + g.id);
+    if (editando && editando.id === g.id) fecharEditor();
+    await aposAlteracao();
+    aviso('msg-edit', `Aula excluída: ${resumoAula(g)}`, true);
+  } catch (e) {
+    aviso('msg-edit', e.message, false);
+  }
+}
+
+// exclui só do grupo A: o B fica com a aula, agora como aula própria dele
+async function excluirSoA(g) {
+  if (!confirm(`Excluir esta aula SÓ do grupo A?\nO grupo B continua com ela (vira aula própria do B, com o mesmo professor).\n\n${resumoAula(g)}`)) return;
+  try {
+    await enviar(`/grade/${g.id}/excluir-so-a`, {});
+    if (editando && editando.id === g.id) fecharEditor();
+    await aposAlteracao();
+    aviso('msg-edit', `Aula removida só do grupo A; o grupo B mantém: ${resumoAula(g)}`, true);
+  } catch (e) {
+    aviso('msg-edit', e.message, false);
+  }
+}
+
+// grupo B deixa de ter a aula herdada do A (o A não muda)
+async function excluirSoB(g) {
+  if (!confirm(`Excluir esta aula SÓ do grupo B?\nO grupo A continua com ela.\n\n${resumoAula(g)}`)) return;
+  try {
+    await enviar('/grade/excecoes', { ano: g.ano, turno: g.turno, dia_semana: g.dia_semana, numero_aula: g.numero_aula });
+    if (editando && editando.id === g.id) fecharEditor();
+    await aposAlteracao();
+    aviso('msg-edit', `Aula removida só do grupo B: ${resumoAula(g)}`, true);
+  } catch (e) {
+    aviso('msg-edit', e.message, false);
+  }
+}
+
+// desfaz a exclusão só do B: ele volta a herdar a aula do A
+async function restaurarB(g) {
+  try {
+    await remover('/grade/excecoes/' + g.excecao_id);
+    await aposAlteracao();
+    aviso('msg-edit', `Aula restaurada no grupo B: ${resumoAula(g)}`, true);
+  } catch (e) {
+    aviso('msg-edit', e.message, false);
+  }
+}
 
 carregar();
 </script>

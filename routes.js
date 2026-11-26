@@ -1,6 +1,6 @@
 // routes.js - todas as rotas da API em um único arquivo
 const router = require('express').Router();
-const { query } = require('./database');
+const { query, getPool } = require('./database');
 
 /* ======================== Helpers ======================== */
 
@@ -33,6 +33,14 @@ const montarWhere = (filtros) => {
     params: ativos.map(([, v]) => v),
   };
 };
+
+// Remove exceções do grupo B num horário (usado quando a aula do grupo A muda de lugar ou é apagada)
+const limparExcecoes = (ano, turno, horarioId) => query(
+  `DELETE e FROM grade_excecoes e
+     JOIN turmas t ON t.id = e.turma_id
+    WHERE t.ano = ? AND t.turno = ? AND e.horario_id = ?`,
+  [ano, turno, horarioId]
+);
 
 /* ======================== Professores ======================== */
 
@@ -200,6 +208,8 @@ router.post('/grade', h(async (req, res) => {
     'INSERT INTO grade_horaria (turma_id, disciplina_id, professor_id, horario_id) VALUES (?, ?, ?, ?)',
     [turma.id, disciplina_id, professor_id, horario.id]
   );
+  // se o B estava marcado como "sem aula" nesse horário, a exceção deixa de valer
+  await query('DELETE FROM grade_excecoes WHERE turma_id = ? AND horario_id = ?', [turma.id, horario.id]);
   res.status(201).json({
     id: r.insertId, professor_id, disciplina_id,
     turma: { id: turma.id, ano, turno, grupo },
@@ -243,8 +253,16 @@ router.get('/grade', h(async (req, res) => {
   } else if (expandir) {
     // horários (por ano/turno) em que o grupo B tem aula própria
     const comB = new Set(rows.filter((r) => r.grupo === 'B').map((r) => `${r.ano}|${r.turno}|${r.horario_id}`));
+    // horários em que o B foi marcado como "sem aula" (exceções)
+    const exc = await query(
+      'SELECT t.ano, t.turno, e.horario_id FROM grade_excecoes e JOIN turmas t ON t.id = e.turma_id'
+    );
+    const semB = new Set(exc.map((e) => `${e.ano}|${e.turno}|${e.horario_id}`));
     const herdadas = rows
-      .filter((r) => r.grupo === 'A' && !comB.has(`${r.ano}|${r.turno}|${r.horario_id}`))
+      .filter((r) => {
+        const k = `${r.ano}|${r.turno}|${r.horario_id}`;
+        return r.grupo === 'A' && !comB.has(k) && !semB.has(k);
+      })
       .map((r) => ({ ...r, grupo: 'B', classe_inteira: true }));
     if (grupo === 'B') lista = lista.filter((r) => r.grupo === 'B');
     lista = lista.concat(herdadas);
@@ -262,9 +280,171 @@ router.get('/grade', h(async (req, res) => {
   res.json(lista.map((r) => ({ ...r, dia: DIAS[r.dia_semana] })));
 }));
 
+// Editar uma aula da grade: professor, disciplina e/ou horário (dia_semana + numero_aula)
+// body (qualquer subconjunto): { professor_id, disciplina_id, dia_semana, numero_aula }
+router.put('/grade/:id', h(async (req, res) => {
+  const [atual] = await query(
+    `SELECT g.id, g.turma_id, g.disciplina_id, g.professor_id, g.horario_id,
+            t.ano, t.turno, t.grupo, hr.dia_semana, hr.numero_aula
+       FROM grade_horaria g
+       JOIN turmas t         ON t.id = g.turma_id
+       JOIN horarios_aula hr ON hr.id = g.horario_id
+      WHERE g.id = ?`,
+    [req.params.id]
+  );
+  if (!atual) throw erro(404, 'Aula não encontrada na grade');
+
+  const b = req.body;
+  const professor_id = b.professor_id !== undefined ? intOk(b.professor_id, 1, ID_MAX) : atual.professor_id;
+  const disciplina_id = b.disciplina_id !== undefined ? intOk(b.disciplina_id, 1, ID_MAX) : atual.disciplina_id;
+  const dia = b.dia_semana !== undefined ? intOk(b.dia_semana, 2, 6) : atual.dia_semana;
+  const aula = b.numero_aula !== undefined ? intOk(b.numero_aula, 1, 10) : atual.numero_aula;
+  if (!professor_id || !disciplina_id || !dia || !aula) throw erro(400, 'Dados inválidos para edição');
+
+  const [prof] = await query('SELECT id, nome FROM professores WHERE id = ?', [professor_id]);
+  if (!prof) throw erro(404, 'Professor não encontrado');
+  const [disc] = await query('SELECT id FROM disciplinas WHERE id = ?', [disciplina_id]);
+  if (!disc) throw erro(404, 'Disciplina não encontrada');
+
+  // o horário continua dentro do turno da turma
+  const [horario] = await query(
+    'SELECT id FROM horarios_aula WHERE turno = ? AND dia_semana = ? AND numero_aula = ?',
+    [atual.turno, dia, aula]
+  );
+  if (!horario) throw erro(404, `Horário não cadastrado: ${atual.turno}, ${DIAS[dia]}, ${aula}ª aula`);
+
+  // conflitos, ignorando a própria aula
+  const [cTurma] = await query(
+    `SELECT d.nome AS disciplina, p.nome AS professor
+       FROM grade_horaria g
+       JOIN disciplinas d ON d.id = g.disciplina_id
+       JOIN professores p ON p.id = g.professor_id
+      WHERE g.turma_id = ? AND g.horario_id = ? AND g.id <> ?`,
+    [atual.turma_id, horario.id, atual.id]
+  );
+  if (cTurma) throw erro(409, `A turma já tem ${cTurma.disciplina} com ${cTurma.professor} nesse horário`);
+
+  const [cProf] = await query(
+    `SELECT t.ano, t.grupo, d.nome AS disciplina
+       FROM grade_horaria g
+       JOIN turmas t      ON t.id = g.turma_id
+       JOIN disciplinas d ON d.id = g.disciplina_id
+      WHERE g.professor_id = ? AND g.horario_id = ? AND g.id <> ?`,
+    [professor_id, horario.id, atual.id]
+  );
+  if (cProf) throw erro(409, `${prof.nome} já está alocado nesse horário (${cProf.disciplina} no ${cProf.ano}º ${cProf.grupo})`);
+
+  await query(
+    'UPDATE grade_horaria SET professor_id = ?, disciplina_id = ?, horario_id = ? WHERE id = ?',
+    [professor_id, disciplina_id, horario.id, atual.id]
+  );
+  if (atual.grupo === 'A' && horario.id !== atual.horario_id) {
+    await limparExcecoes(atual.ano, atual.turno, atual.horario_id);
+  }
+  res.json({ id: atual.id, professor_id, disciplina_id, dia_semana: dia, numero_aula: aula });
+}));
+
 router.delete('/grade/:id', h(async (req, res) => {
-  const r = await query('DELETE FROM grade_horaria WHERE id = ?', [req.params.id]);
-  if (!r.affectedRows) throw erro(404, 'Aula não encontrada na grade');
+  const [aula] = await query(
+    `SELECT g.horario_id, t.ano, t.turno, t.grupo
+       FROM grade_horaria g JOIN turmas t ON t.id = g.turma_id
+      WHERE g.id = ?`,
+    [req.params.id]
+  );
+  if (!aula) throw erro(404, 'Aula não encontrada na grade');
+  await query('DELETE FROM grade_horaria WHERE id = ?', [req.params.id]);
+  if (aula.grupo === 'A') await limparExcecoes(aula.ano, aula.turno, aula.horario_id);
+  res.status(204).end();
+}));
+
+// Exclui a aula só do grupo A: o grupo B continua com ela, agora como aula própria (mesmo professor/disciplina).
+// Só vale quando o B apenas herda a aula do A; se o B já tem aula própria ou foi marcado "sem aula", use o DELETE normal.
+router.post('/grade/:id/excluir-so-a', h(async (req, res) => {
+  const [a] = await query(
+    `SELECT g.id, g.disciplina_id, g.professor_id, g.horario_id, t.ano, t.turno, t.grupo
+       FROM grade_horaria g JOIN turmas t ON t.id = g.turma_id
+      WHERE g.id = ?`,
+    [req.params.id]
+  );
+  if (!a) throw erro(404, 'Aula não encontrada na grade');
+  if (a.grupo !== 'A') throw erro(409, 'Esta aula não é do grupo A');
+
+  const [turmaB] = await query("SELECT id FROM turmas WHERE ano = ? AND turno = ? AND grupo = 'B'", [a.ano, a.turno]);
+  if (!turmaB) throw erro(404, 'Turma do grupo B não encontrada');
+
+  const [propriaB] = await query(
+    'SELECT id FROM grade_horaria WHERE turma_id = ? AND horario_id = ?', [turmaB.id, a.horario_id]
+  );
+  if (propriaB) throw erro(409, 'O grupo B tem aula própria nesse horário; use a exclusão normal (ela afeta só o grupo A).');
+
+  const [semB] = await query(
+    'SELECT id FROM grade_excecoes WHERE turma_id = ? AND horario_id = ?', [turmaB.id, a.horario_id]
+  );
+  if (semB) throw erro(409, 'O grupo B já não tem esta aula; use a exclusão normal.');
+
+  // o mesmo professor não pode ter duas aulas no mesmo horário, então: apaga a do A e cria a do B na mesma transação
+  const conn = await getPool().getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute('DELETE FROM grade_horaria WHERE id = ?', [a.id]);
+    const [ins] = await conn.execute(
+      'INSERT INTO grade_horaria (turma_id, disciplina_id, professor_id, horario_id) VALUES (?, ?, ?, ?)',
+      [turmaB.id, a.disciplina_id, a.professor_id, a.horario_id]
+    );
+    await conn.commit();
+    res.status(201).json({ id: ins.insertId, grupo: 'B', disciplina_id: a.disciplina_id, professor_id: a.professor_id });
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}));
+
+/* ======================== Exceções: aula do A que o B não tem ======================== */
+
+router.get('/grade/excecoes', h(async (req, res) => {
+  const rows = await query(
+    `SELECT e.id, e.horario_id, t.ano, t.turno, t.grupo,
+            hr.dia_semana, hr.numero_aula, hr.hora_inicio, hr.hora_fim
+       FROM grade_excecoes e
+       JOIN turmas t         ON t.id = e.turma_id
+       JOIN horarios_aula hr ON hr.id = e.horario_id
+      ORDER BY t.ano, t.turno, hr.dia_semana, hr.numero_aula`
+  );
+  res.json(rows.map((x) => ({ ...x, dia: DIAS[x.dia_semana] })));
+}));
+
+// body: { ano, turno, dia_semana, numero_aula }  -> o grupo B deixa de ter a aula do A nesse horário
+router.post('/grade/excecoes', h(async (req, res) => {
+  const ano = intOk(req.body.ano, 1, 3);
+  const turno = turnoOk(req.body.turno);
+  const dia = intOk(req.body.dia_semana, 2, 6);
+  const aula = intOk(req.body.numero_aula, 1, 10);
+  if (!ano || !turno || !dia || !aula) throw erro(400, 'Informe ano, turno, dia_semana e numero_aula');
+
+  const [turmaA] = await query("SELECT id FROM turmas WHERE ano = ? AND turno = ? AND grupo = 'A'", [ano, turno]);
+  const [turmaB] = await query("SELECT id FROM turmas WHERE ano = ? AND turno = ? AND grupo = 'B'", [ano, turno]);
+  const [horario] = await query(
+    'SELECT id FROM horarios_aula WHERE turno = ? AND dia_semana = ? AND numero_aula = ?', [turno, dia, aula]
+  );
+  if (!turmaA || !turmaB) throw erro(404, 'Turma não encontrada');
+  if (!horario) throw erro(404, 'Horário não cadastrado');
+
+  const [aulaA] = await query('SELECT id FROM grade_horaria WHERE turma_id = ? AND horario_id = ?', [turmaA.id, horario.id]);
+  if (!aulaA) throw erro(409, 'O grupo A não tem aula nesse horário; não há o que remover do grupo B');
+
+  const [aulaB] = await query('SELECT id FROM grade_horaria WHERE turma_id = ? AND horario_id = ?', [turmaB.id, horario.id]);
+  if (aulaB) throw erro(409, 'O grupo B tem aula própria nesse horário; edite ou exclua essa aula');
+
+  const r = await query('INSERT INTO grade_excecoes (turma_id, horario_id) VALUES (?, ?)', [turmaB.id, horario.id]);
+  res.status(201).json({ id: r.insertId, ano, turno, grupo: 'B', dia_semana: dia, numero_aula: aula });
+}));
+
+// restaura: o grupo B volta a herdar a aula do A
+router.delete('/grade/excecoes/:id', h(async (req, res) => {
+  const r = await query('DELETE FROM grade_excecoes WHERE id = ?', [req.params.id]);
+  if (!r.affectedRows) throw erro(404, 'Exceção não encontrada');
   res.status(204).end();
 }));
 

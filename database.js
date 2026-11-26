@@ -87,6 +87,16 @@ async function initDatabase() {
       UNIQUE (turma_id, horario_id),
       UNIQUE (professor_id, horario_id)
     ) ENGINE=InnoDB`,
+
+    // Aulas do grupo A que o grupo B NÃO tem (o B normalmente herda as aulas do A)
+    `CREATE TABLE IF NOT EXISTS grade_excecoes (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      turma_id INT NOT NULL,           -- turma do grupo B
+      horario_id INT NOT NULL,
+      FOREIGN KEY (turma_id) REFERENCES turmas(id),
+      FOREIGN KEY (horario_id) REFERENCES horarios_aula(id),
+      UNIQUE (turma_id, horario_id)
+    ) ENGINE=InnoDB`,
   ];
 
   for (const sql of tabelas) {
