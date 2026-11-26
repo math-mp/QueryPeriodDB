@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="QueryPeriodDB - Sistema de gerenciamento e consulta de grades escolares">
+  <title>QueryPeriodDB</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="global-loader" class="loading-overlay" hidden>
+    <div class="loading-spinner" aria-live="polite"></div>
+  </div>
+
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-labelledby="sidebar-title">
+      <h2 id="sidebar-title" class="sr-only">Filtros e navegação</h2>
+      <div class="sidebar-section">
+        <h3 class="sidebar-label">Filtros da Grade</h3>
+        <div class="filter-group">
+          <label for="f-ano" class="form-label">Ano</label>
+          <select id="f-ano" class="filter-select"></select>
+          <label for="f-turno" class="form-label">Turno</label>
+          <select id="f-turno" class="filter-select"></select>
+          <label for="f-grupo" class="form-label">Grupo</label>
+          <select id="f-grupo" class="filter-select"></select>
+          <label for="f-professor" class="form-label">Professor</label>
+          <select id="f-professor" class="filter-select"></select>
+          <label for="f-disciplina" class="form-label">Disciplina</label>
+          <select id="f-disciplina" class="filter-select"></select>
+          <label for="f-dia" class="form-label">Dia da semana</label>
+          <select id="f-dia" class="filter-select"></select>
+        </div>
+        <div class="filter-group">
+          <label for="f-agrupar" class="form-label">Agrupar por</label>
+          <select id="f-agrupar" class="filter-select">
+            <option value="turma">Turma</option>
+            <option value="dia">Dia da semana</option>
+            <option value="professor">Professor</option>
+            <option value="disciplina">Disciplina</option>
+          </select>
+        </div>
+        <button type="button" id="limpar-filtros" class="btn btn-secondary btn-sm btn-full-width">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Limpar filtros
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+        <h3 class="sidebar-label">Ações rápidas</h3>
+        <button type="button" id="expandir-tudo" class="btn btn-secondary btn-sm btn-full-width justify-start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+            <polyline points="6 15 12 9 18 15"></polyline>
+          </svg>
+          Expandir todos
+        </button>
+        <button type="button" id="recolher-tudo" class="btn btn-secondary btn-sm btn-full-width justify-start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 15 12 9 18 15"></polyline>
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          Recolher todos
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+        <h3 class="sidebar-label">Resumo</h3>
+        <div class="sidebar-stats">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-teachers">0</div>
+            <div class="stat-label">Professores</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-subjects">0</div>
+            <div class="stat-label">Disciplinas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-classes">0</div>
+            <div class="stat-label">Turmas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-lessons">0</div>
+            <div class="stat-label">Aulas na grade</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+    <header class="header" aria-label="Cabeçalho principal">
+      <div class="header-left">
+        <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu lateral" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <a href="/" class="logo" aria-label="QueryPeriodDB - Página inicial">
+          <span class="logo-icon">
+            <img src="logo.png" alt="" width="40" height="40">
+          </span>
+          QueryPeriodDB
+        </a>
+        <nav class="nav-tabs" role="tablist" aria-label="Navegação principal">
+          <button type="button" class="nav-tab active" id="schedule-tab" data-tab="schedule" role="tab" aria-selected="true" aria-controls="schedule">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Grade</span>
+          </button>
+          <button type="button" class="nav-tab" id="search-tab" data-tab="search" role="tab" aria-selected="false" aria-controls="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Busca</span>
+          </button>
+          <button type="button" class="nav-tab" id="manage-tab" data-tab="manage" role="tab" aria-selected="false" aria-controls="manage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Gerenciar</span>
+          </button>
+        </nav>
+      </div>
+      <div class="header-right">
+        <div class="header-actions">
+          <button type="button" class="icon-btn" id="theme-toggle" aria-label="Alternar tema">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section id="schedule" class="tab-panel active" role="tabpanel" aria-labelledby="schedule-tab">
+        <header class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">Grade Escolar</h1>
+            <p class="page-subtitle">Visualize e gerencie aulas por turma, professor, disciplina ou dia da semana</p>
+          </div>
+          <div class="page-actions">
+            <div class="view-toggle" role="group" aria-label="Alternar visualização">
+              <button type="button" class="view-toggle-btn active" data-view="week" aria-label="Visualização semanal" aria-pressed="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </button>
+              <button type="button" class="view-toggle-btn" data-view="day" aria-label="Visualização diária" aria-pressed="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                  <line x1="3" y1="14" x2="21" y2="14"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Resultado da consulta</h2>
+              <p class="card-subtitle" id="grade-count">Carregando...</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="grade-resultado"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="search" class="tab-panel" role="tabpanel" aria-labelledby="search-tab" hidden>
+        <header class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">Consulta Avançada</h1>
+            <p class="page-subtitle">Pesquise professores, disciplinas, turmas, horários e aulas com tolerância a erros</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="search-box">
+              <input type="search" id="search-input" class="search-input" placeholder="Pesquise por professor, disciplina, turma, dia... (ex.: mariya, matematica, 1 manha A, segunda)" autocomplete="off" aria-label="Busca avançada">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <p class="search-hint">
+              <kbd>Enter</kbd> para buscar
+              <span>•</span>
+              A busca aceita aproximações (ex.: "matematca", "mariya")
+              <span>•</span>
+              Combine vários termos (ex.: "1 manha A", "joao quarta")
+            </p>
+            <div id="search-chips" class="category-tabs" role="group" aria-label="Filtrar por categoria"></div>
+            <div id="search-results"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="manage" class="tab-panel" role="tabpanel" aria-labelledby="manage-tab" hidden>
+        <header class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">Gerenciar</h1>
+            <p class="page-subtitle">Adicione professores, disciplinas, horários e gerencie aulas na grade</p>
+          </div>
+          <div class="page-actions">
+            <button type="button" class="btn btn-primary" id="btn-nova-disciplina">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Nova disciplina
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-novo-horario">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              Novo horário
+            </button>
+          </div>
+        </header>
+
+        <div class="section">
+          <header class="section-header">
+            <div>
+              <h2 class="section-title">1. Adicionar professor</h2>
+              <p class="section-description">Cadastre novos professores no sistema</p>
+            </div>
+          </header>
+          <div class="card">
+            <div class="card-body">
+              <form class="form-grid" id="form-professor">
+                <div class="form-field">
+                  <label for="n-nome" class="form-label">Nome do professor</label>
+                  <input type="text" id="n-nome" class="form-input" placeholder="Ex.: Maria S. Silva" autocomplete="off" required>
+                </div>
+                <div class="form-field form-field-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-prof">Adicionar professor</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <header class="section-header">
+            <div>
+              <h2 class="section-title">2. Adicionar à grade</h2>
+              <p class="section-description">Preencha slots &ldquo;A definir&rdquo; ou crie novas aulas em horários livres</p>
+            </div>
+          </header>
+          <div class="card">
+            <div class="card-body">
+              <div class="chip-group" id="modo-grade" role="radiogroup" aria-label="Modo de adição à grade">
+                <button type="button" class="chip active" data-modo="definir" role="radio" aria-checked="true">Preencher slot &ldquo;A definir&rdquo;</button>
+                <button type="button" class="chip" data-modo="livre" role="radio" aria-checked="false">Nova aula em horário livre</button>
+              </div>
+
+              <div id="modo-definir">
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label for="d-slot" class="form-label">Slot a definir</label>
+                    <select id="d-slot" class="form-select" aria-label="Selecione o slot"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="d-professor" class="form-label">Professor</label>
+                    <select id="d-professor" class="form-select" aria-label="Selecione o professor"></select>
+                  </div>
+                </div>
+                <p class="help-text" id="d-info"></p>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-primary" id="btn-definir">Atribuir professor ao slot</button>
+                </div>
+              </div>
+
+              <div id="modo-livre" hidden>
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label for="a-professor" class="form-label">Professor</label>
+                    <select id="a-professor" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-disciplina" class="form-label">Disciplina</label>
+                    <select id="a-disciplina" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-ano" class="form-label">Ano</label>
+                    <select id="a-ano" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-turno" class="form-label">Turno</label>
+                    <select id="a-turno" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-grupo" class="form-label">Grupo</label>
+                    <select id="a-grupo" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-dia" class="form-label">Dia da semana</label>
+                    <select id="a-dia" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-aula" class="form-label">Aula (horário)</label>
+                    <select id="a-aula" class="form-select"></select>
+                  </div>
+                </div>
+                <p class="help-text">
+                  Aulas da classe inteira vão no <strong>Grupo A</strong> (o grupo B as herda automaticamente).
+                  Use o Grupo B só quando ele tiver professor ou disciplina diferente.
+                  Horários já ocupados aparecem desativados.
+                </p>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-primary" id="btn-atribuir">Adicionar aula</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <header class="section-header">
+            <div>
+              <h2 class="section-title">3. Editar ou excluir atribuição</h2>
+              <p class="section-description">Gerencie aulas existentes na grade</p>
+            </div>
+          </header>
+          <div class="card">
+            <div class="card-body">
+              <div class="filter-bar">
+                <div class="form-field">
+                  <label for="e-ano" class="form-label">Ano</label>
+                  <select id="e-ano" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-turno" class="form-label">Turno</label>
+                  <select id="e-turno" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-grupo" class="form-label">Grupo</label>
+                  <select id="e-grupo" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-dia" class="form-label">Dia</label>
+                  <select id="e-dia" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-professor" class="form-label">Professor</label>
+                  <select id="e-professor" class="form-select"></select>
+                </div>
+              </div>
+
+              <div id="e-editor" class="card editor-panel" hidden>
+                <div class="card-header">
+                  <h3 class="card-title" id="e-titulo">Edição de aula</h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-grid">
+                    <div class="form-field">
+                      <label for="x-professor" class="form-label">Professor</label>
+                      <select id="x-professor" class="form-select"></select>
+                    </div>
+                    <div class="form-field">
+                      <label for="x-disciplina" class="form-label">Disciplina</label>
+                      <select id="x-disciplina" class="form-select"></select>
+                    </div>
+                    <div class="form-field">
+                      <label for="x-dia" class="form-label">Dia da semana</label>
+                      <select id="x-dia" class="form-select"></select>
+                    </div>
+                    <div class="form-field">
+                      <label for="x-aula" class="form-label">Aula (horário)</label>
+                      <select id="x-aula" class="form-select"></select>
+                    </div>
+                  </div>
+                  <div class="card-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-salvar">Salvar alterações</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="e-lista"></div>
+
+              <div class="help-text">
+                <strong>Regras de herança:</strong> As aulas da classe inteira ficam gravadas no Grupo A e o Grupo B as herda.
+                Para mudar algo <strong>só no B</strong>, use os botões das linhas do Grupo B marcadas como &ldquo;Herdada do grupo A&rdquo;:
+                <em>Editar só p/ B</em> cria uma aula própria do B (o A não muda) e <em>Excluir só p/ B</em> tira a aula apenas do B.
+                Nas linhas do Grupo A, <em>Editar</em> e <em>Excluir</em> valem para o A e para o B que a herda;
+                <em>Excluir só p/ A</em> tira a aula do A e deixa o B com ela (como aula própria do B).
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <div class="modal-overlay" id="modal-disciplina" role="dialog" aria-modal="true" aria-labelledby="modal-disciplina-title" hidden>
+    <div class="modal">
+      <header class="modal-header" role="none" aria-label="Cabeçalho do modal">
+        <h2 class="modal-title" id="modal-disciplina-title">Nova disciplina</h2>
+        <button type="button" class="modal-close" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
+      <form id="form-disciplina" class="modal-body">
+        <div class="form-field">
+          <label for="disciplina-nome" class="form-label">Nome da disciplina</label>
+          <input type="text" id="disciplina-nome" class="form-input" placeholder="Ex.: Matemática" required autocomplete="off">
+        </div>
+      </form>
+      <footer class="modal-footer" role="none" aria-label="Rodapé do modal">
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" form="form-disciplina" class="btn btn-primary">Adicionar</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-horario" role="dialog" aria-modal="true" aria-labelledby="modal-horario-title" hidden>
+    <div class="modal">
+      <header class="modal-header" role="none" aria-label="Cabeçalho do modal">
+        <h2 class="modal-title" id="modal-horario-title">Novo horário</h2>
+        <button type="button" class="modal-close" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
+      <form id="form-horario" class="modal-body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="horario-turno" class="form-label">Turno</label>
+            <select id="horario-turno" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="Manha">Manhã</option>
+              <option value="Tarde">Tarde</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="horario-dia" class="form-label">Dia da semana</label>
+            <select id="horario-dia" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="2">Segunda</option>
+              <option value="3">Terça</option>
+              <option value="4">Quarta</option>
+              <option value="5">Quinta</option>
+              <option value="6">Sexta</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="horario-aula" class="form-label">Número da aula</label>
+            <select id="horario-aula" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="1">1ª aula</option>
+              <option value="2">2ª aula</option>
+              <option value="3">3ª aula</option>
+              <option value="4">4ª aula</option>
+              <option value="5">5ª aula</option>
+              <option value="6">6ª aula</option>
+              <option value="7">7ª aula</option>
+              <option value="8">8ª aula</option>
+              <option value="9">Contraturno</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="horario-inicio" class="form-label">Hora inicial</label>
+            <input type="time" id="horario-inicio" class="form-input" required>
+          </div>
+          <div class="form-field">
+            <label for="horario-fim" class="form-label">Hora final</label>
+            <input type="time" id="horario-fim" class="form-input" required>
+          </div>
+        </div>
+      </form>
+      <footer class="modal-footer" role="none" aria-label="Rodapé do modal">
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" form="form-horario" class="btn btn-primary">Adicionar</button>
+      </footer>
+    </div>
+  </div>
+
+  <footer class="footer" aria-label="Rodapé">
+    QueryPeriodDB &mdash; Sistema de gerenciamento de grades escolares
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
