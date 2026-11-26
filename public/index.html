@@ -1,995 +1,542 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Grade Escolar</title>
-<style>
-  :root {
-    --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #6b7385;
-    --line: #e3e6ec; --accent: #2f6fed; --accent-soft: #e8efff;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #14171d; --card: #1d222b; --text: #e8ebf2; --muted: #98a1b3;
-      --line: #2e3542; --accent: #6b9bff; --accent-soft: #232e4a;
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 22px; margin: 0 0 16px; }
-  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-  .tab { background: none; border: 0; padding: 10px 16px; font: inherit; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
-  .panel { display: none; } .panel.active { display: block; }
-  .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
-  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  select, input[type=search], input[type=text] { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-  input[type=search] { width: 100%; padding: 12px 14px; font-size: 16px; }
-  select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
-  .bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
-  button.limpar { background: none; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
-  .scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
-  table { border-collapse: collapse; width: 100%; min-width: 560px; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--card); }
-  tr:last-child td { border-bottom: 0; }
-  .cell small, td small { display: block; color: var(--muted); }
-  .grid th:first-child, .grid td:first-child { white-space: nowrap; color: var(--muted); }
-  .vazio { padding: 28px; text-align: center; color: var(--muted); }
-  .erro { background: #fde8e8; color: #8a1c1c; padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
-  @media (prefers-color-scheme: dark) { .erro { background: #3a1d1d; color: #ffb4b4; } }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
-  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
-  .chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-  .grupo { margin-bottom: 20px; }
-  .grupo h2 { font-size: 14px; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
-  .grupo h2 code { font-size: 12px; color: var(--muted); font-weight: 400; }
-  .res { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; }
-  .res small { display: block; color: var(--muted); }
-  .mais { color: var(--muted); font-size: 13px; padding: 4px 2px; }
-  .bar .acoes { display: flex; gap: 12px; align-items: center; }
-  .bar label.inline { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; }
-  .bar label.inline select { padding: 5px 8px; font-size: 13px; }
-  .form { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 18px; }
-  .form h2 { font-size: 15px; margin: 0 0 12px; }
-  .form .linha { display: flex; gap: 10px; }
-  .form .linha input { flex: 1; }
-  .dica { margin: 4px 0 14px; font-size: 13px; color: var(--muted); }
-  button.primario { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font: inherit; cursor: pointer; }
-  button.primario:hover { filter: brightness(1.08); }
-  .msg { display: none; margin-top: 12px; padding: 9px 12px; border-radius: 8px; font-size: 14px; }
-  .msg.ok { background: rgba(46,160,67,.15); color: #1a7f37; }
-  .msg.err { background: rgba(218,54,51,.14); color: #b42318; }
-  @media (prefers-color-scheme: dark) { .msg.ok { color: #56d364; } .msg.err { color: #ff9b94; } }
-  button.mini { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
-  button.mini + button.mini { margin-left: 6px; }
-  button.mini.perigo { color: #b42318; border-color: rgba(218,54,51,.45); }
-  @media (prefers-color-scheme: dark) { button.mini.perigo { color: #ff9b94; } }
-  td.acoes { white-space: nowrap; text-align: right; }
-  tr.excecao td { opacity: .6; }
-  .editor { border: 1px solid var(--accent); border-radius: 10px; padding: 14px; margin: 4px 0 16px; }
-  .editor h3 { font-size: 14px; margin: 0 0 12px; }
-  .editor .botoes { display: flex; gap: 10px; }
-  .form .chips { margin: 0 0 14px; }
-  .gcard { margin-bottom: 14px; }
-  .gcard > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    padding: 11px 14px; font-weight: 600; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
-  .gcard > summary::-webkit-details-marker { display: none; }
-  .gcard > summary::before { content: "▸"; color: var(--muted); margin-right: 8px; display: inline-block; transition: transform .15s; }
-  .gcard[open] > summary::before { transform: rotate(90deg); }
-  .gcard > summary .t { flex: 1; }
-  .gcard > summary .n { font-weight: 400; font-size: 13px; color: var(--muted); }
-  .gcard[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-  .gcard .scroll { border-top: 0; border-radius: 0 0 10px 10px; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="QueryPeriodDB - Sistema de gerenciamento e consulta de grades escolares">
+  <title>QueryPeriodDB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<main>
-  <h1>📚 Grade Escolar</h1>
-  <div id="erro" class="erro"></div>
-
-  <div class="tabs" role="tablist">
-    <button class="tab active" data-tab="principal" role="tab">Grade principal</button>
-    <button class="tab" data-tab="avancada" role="tab">Consulta avançada</button>
-    <button class="tab" data-tab="adicoes" role="tab">Adições</button>
+  <div id="global-loader" class="loading-overlay" hidden>
+    <div class="loading-spinner" aria-live="polite"></div>
   </div>
 
-  <!-- ===================== ABA 1: GRADE PRINCIPAL ===================== -->
-  <section id="principal" class="panel active">
-    <div class="filters">
-      <label>Ano <select id="f-ano"></select></label>
-      <label>Turno <select id="f-turno"></select></label>
-      <label>Grupo <select id="f-grupo"></select></label>
-      <label>Professor <select id="f-professor"></select></label>
-      <label>Disciplina <select id="f-disciplina"></select></label>
-      <label>Dia da semana <select id="f-dia"></select></label>
-    </div>
-    <div class="bar">
-      <span id="contagem"></span>
-      <span class="acoes">
-        <label class="inline">Agrupar por
-          <select id="f-agrupar">
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar" aria-labelledby="sidebar-title">
+      <h2 id="sidebar-title" class="sr-only">Filtros e navegação</h2>
+      <div class="sidebar-section">
+        <h3 class="sidebar-label">Filtros da Grade</h3>
+        <div class="filter-group">
+          <label for="f-ano" class="form-label">Ano</label>
+          <select id="f-ano" class="filter-select"></select>
+          <label for="f-turno" class="form-label">Turno</label>
+          <select id="f-turno" class="filter-select"></select>
+          <label for="f-grupo" class="form-label">Grupo</label>
+          <select id="f-grupo" class="filter-select"></select>
+          <label for="f-professor" class="form-label">Professor</label>
+          <select id="f-professor" class="filter-select"></select>
+          <label for="f-disciplina" class="form-label">Disciplina</label>
+          <select id="f-disciplina" class="filter-select"></select>
+          <label for="f-dia" class="form-label">Dia da semana</label>
+          <select id="f-dia" class="filter-select"></select>
+        </div>
+        <div class="filter-group">
+          <label for="f-agrupar" class="form-label">Agrupar por</label>
+          <select id="f-agrupar" class="filter-select">
             <option value="turma">Turma</option>
             <option value="dia">Dia da semana</option>
             <option value="professor">Professor</option>
             <option value="disciplina">Disciplina</option>
           </select>
-        </label>
-        <button class="limpar" id="expandir">Expandir tudo</button>
-        <button class="limpar" id="recolher">Recolher tudo</button>
-        <button class="limpar" id="limpar">Limpar filtros</button>
-      </span>
-    </div>
-    <div id="resultado"></div>
-  </section>
-
-  <!-- ===================== ABA 2: CONSULTA AVANÇADA ===================== -->
-  <section id="avancada" class="panel">
-    <input type="search" id="busca" placeholder="Pesquise por professor, disciplina, turma, dia... (ex.: mariya, matematica, 1 manha A, segunda)" autocomplete="off">
-    <div class="chips" id="chips"></div>
-    <div id="busca-resultado"></div>
-  </section>
-
-  <!-- ===================== ABA 3: ADIÇÕES ===================== -->
-  <section id="adicoes" class="panel">
-
-    <!-- 1 · Adicionar professor -->
-    <div class="form">
-      <h2>1 · Adicionar professor</h2>
-      <div class="linha">
-        <input type="text" id="n-nome" placeholder="Nome do professor (ex.: Maria S. Silva)" autocomplete="off">
-        <button class="primario" id="btn-prof">Adicionar</button>
-      </div>
-      <div class="msg" id="msg-prof"></div>
-    </div>
-
-    <!-- 2 · Adicionar à grade -->
-    <div class="form">
-      <h2>2 · Adicionar à grade</h2>
-      <div class="chips" id="modo-grade">
-        <button class="chip active" data-modo="definir">Preencher slot "A definir"</button>
-        <button class="chip" data-modo="livre">Nova aula em horário livre</button>
-      </div>
-
-      <div id="modo-definir">
-        <div class="filters" style="grid-template-columns: minmax(260px, 2fr) minmax(200px, 1fr)">
-          <label>Slot a definir <select id="d-slot"></select></label>
-          <label>Professor <select id="d-professor"></select></label>
         </div>
-        <p class="dica" id="d-info"></p>
-        <button class="primario" id="btn-definir">Atribuir professor ao slot</button>
-        <div class="msg" id="msg-definir"></div>
+        <button type="button" id="limpar-filtros" class="btn btn-secondary btn-sm btn-full-width">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Limpar filtros
+        </button>
       </div>
 
-      <div id="modo-livre" style="display:none">
-        <div class="filters">
-          <label>Professor <select id="a-professor"></select></label>
-          <label>Disciplina <select id="a-disciplina"></select></label>
-          <label>Ano <select id="a-ano"></select></label>
-          <label>Turno <select id="a-turno"></select></label>
-          <label>Grupo <select id="a-grupo"></select></label>
-          <label>Dia da semana <select id="a-dia"></select></label>
-          <label>Aula <select id="a-aula"></select></label>
-        </div>
-        <p class="dica">Aulas da classe inteira vão no <strong>Grupo A</strong> (o grupo B as herda automaticamente). Use o Grupo B só quando ele tiver professor ou disciplina diferente. Horários já ocupados aparecem desativados.</p>
-        <button class="primario" id="btn-atribuir">Adicionar aula</button>
-        <div class="msg" id="msg-aula"></div>
-      </div>
-    </div>
+      <div class="sidebar-divider"></div>
 
-    <!-- 3 · Editar / excluir -->
-    <div class="form">
-      <h2>3 · Editar ou excluir atribuição</h2>
-      <div class="filters">
-        <label>Ano <select id="e-ano"></select></label>
-        <label>Turno <select id="e-turno"></select></label>
-        <label>Grupo <select id="e-grupo"></select></label>
-        <label>Dia da semana <select id="e-dia"></select></label>
-        <label>Professor <select id="e-professor"></select></label>
+      <div class="sidebar-section">
+        <h3 class="sidebar-label">Ações rápidas</h3>
+        <button type="button" id="expandir-tudo" class="btn btn-secondary btn-sm btn-full-width justify-start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+            <polyline points="6 15 12 9 18 15"></polyline>
+          </svg>
+          Expandir todos
+        </button>
+        <button type="button" id="recolher-tudo" class="btn btn-secondary btn-sm btn-full-width justify-start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 15 12 9 18 15"></polyline>
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          Recolher todos
+        </button>
       </div>
 
-      <div class="editor" id="e-editor" style="display:none">
-        <h3 id="e-titulo"></h3>
-        <div class="filters">
-          <label>Professor <select id="x-professor"></select></label>
-          <label>Disciplina <select id="x-disciplina"></select></label>
-          <label>Dia da semana <select id="x-dia"></select></label>
-          <label>Aula <select id="x-aula"></select></label>
-        </div>
-        <div class="botoes">
-          <button class="primario" id="btn-salvar">Salvar alterações</button>
-          <button class="limpar" id="btn-cancelar">Cancelar</button>
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+        <h3 class="sidebar-label">Resumo</h3>
+        <div class="sidebar-stats">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-teachers">0</div>
+            <div class="stat-label">Professores</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-subjects">0</div>
+            <div class="stat-label">Disciplinas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-classes">0</div>
+            <div class="stat-label">Turmas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-lessons">0</div>
+            <div class="stat-label">Aulas na grade</div>
+          </div>
         </div>
       </div>
+    </aside>
 
-      <div class="msg" id="msg-edit" style="margin: 0 0 12px"></div>
-      <div id="e-lista"></div>
-      <p class="dica">As aulas da classe inteira ficam gravadas no Grupo A e o Grupo B as herda. Para mudar algo <strong>só no B</strong>, use os botões das linhas do Grupo B marcadas como "Herdada do grupo A": <em>Editar só p/ B</em> cria uma aula própria do B (o A não muda) e <em>Excluir só p/ B</em> tira a aula apenas do B. Nas linhas do Grupo A, <em>Editar</em> e <em>Excluir</em> valem para o A e para o B que a herda; <em>Excluir só p/ A</em> tira a aula do A e deixa o B com ela (como aula própria do B).</p>
+    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+    <header class="header" aria-label="Cabeçalho principal">
+      <div class="header-left">
+        <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu lateral" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <a href="/" class="logo" aria-label="QueryPeriodDB - Página inicial">
+          <span class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+              <line x1="8" y1="14" x2="16" y2="14"></line>
+              <line x1="8" y1="18" x2="16" y2="18"></line>
+            </svg>
+          </span>
+          QueryPeriodDB
+        </a>
+        <nav class="nav-tabs" role="tablist" aria-label="Navegação principal">
+          <button type="button" class="nav-tab active" id="schedule-tab" data-tab="schedule" role="tab" aria-selected="true" aria-controls="schedule">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Grade</span>
+          </button>
+          <button type="button" class="nav-tab" id="search-tab" data-tab="search" role="tab" aria-selected="false" aria-controls="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Busca</span>
+          </button>
+          <button type="button" class="nav-tab" id="manage-tab" data-tab="manage" role="tab" aria-selected="false" aria-controls="manage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Gerenciar</span>
+          </button>
+        </nav>
+      </div>
+      <div class="header-right">
+        <div class="header-actions">
+          <button type="button" class="icon-btn" id="theme-toggle" aria-label="Alternar tema">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section id="schedule" class="tab-panel active" role="tabpanel" aria-labelledby="schedule-tab">
+        <header class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">Grade Escolar</h1>
+            <p class="page-subtitle">Visualize e gerencie aulas por turma, professor, disciplina ou dia da semana</p>
+          </div>
+          <div class="page-actions">
+            <div class="view-toggle" role="group" aria-label="Alternar visualização">
+              <button type="button" class="view-toggle-btn active" data-view="week" aria-label="Visualização semanal" aria-pressed="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </button>
+              <button type="button" class="view-toggle-btn" data-view="day" aria-label="Visualização diária" aria-pressed="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                  <line x1="3" y1="14" x2="21" y2="14"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Resultado da consulta</h2>
+              <p class="card-subtitle" id="grade-count">Carregando...</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="grade-resultado"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="search" class="tab-panel" role="tabpanel" aria-labelledby="search-tab" hidden>
+        <header class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">Consulta Avançada</h1>
+            <p class="page-subtitle">Pesquise professores, disciplinas, turmas, horários e aulas com tolerância a erros</p>
+          </div>
+        </header>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="search-box">
+              <input type="search" id="search-input" class="search-input" placeholder="Pesquise por professor, disciplina, turma, dia... (ex.: mariya, matematica, 1 manha A, segunda)" autocomplete="off" aria-label="Busca avançada">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <p class="search-hint">
+              <kbd>Enter</kbd> para buscar
+              <span>•</span>
+              A busca aceita aproximações (ex.: "matematca", "mariya")
+              <span>•</span>
+              Combine vários termos (ex.: "1 manha A", "joao quarta")
+            </p>
+            <div id="search-chips" class="category-tabs" role="group" aria-label="Filtrar por categoria"></div>
+            <div id="search-results"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="manage" class="tab-panel" role="tabpanel" aria-labelledby="manage-tab" hidden>
+        <header class="page-header">
+          <div class="page-title-group">
+            <h1 class="page-title">Gerenciar</h1>
+            <p class="page-subtitle">Adicione professores, disciplinas, horários e gerencie aulas na grade</p>
+          </div>
+          <div class="page-actions">
+            <button type="button" class="btn btn-primary" id="btn-nova-disciplina">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Nova disciplina
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-novo-horario">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              Novo horário
+            </button>
+          </div>
+        </header>
+
+        <div class="section">
+          <header class="section-header">
+            <div>
+              <h2 class="section-title">1. Adicionar professor</h2>
+              <p class="section-description">Cadastre novos professores no sistema</p>
+            </div>
+          </header>
+          <div class="card">
+            <div class="card-body">
+              <form class="form-grid" id="form-professor">
+                <div class="form-field">
+                  <label for="n-nome" class="form-label">Nome do professor</label>
+                  <input type="text" id="n-nome" class="form-input" placeholder="Ex.: Maria S. Silva" autocomplete="off" required>
+                </div>
+                <div class="form-field form-field-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-prof">Adicionar professor</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <header class="section-header">
+            <div>
+              <h2 class="section-title">2. Adicionar à grade</h2>
+              <p class="section-description">Preencha slots &ldquo;A definir&rdquo; ou crie novas aulas em horários livres</p>
+            </div>
+          </header>
+          <div class="card">
+            <div class="card-body">
+              <div class="chip-group" id="modo-grade" role="radiogroup" aria-label="Modo de adição à grade">
+                <button type="button" class="chip active" data-modo="definir" role="radio" aria-checked="true">Preencher slot &ldquo;A definir&rdquo;</button>
+                <button type="button" class="chip" data-modo="livre" role="radio" aria-checked="false">Nova aula em horário livre</button>
+              </div>
+
+              <div id="modo-definir">
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label for="d-slot" class="form-label">Slot a definir</label>
+                    <select id="d-slot" class="form-select" aria-label="Selecione o slot"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="d-professor" class="form-label">Professor</label>
+                    <select id="d-professor" class="form-select" aria-label="Selecione o professor"></select>
+                  </div>
+                </div>
+                <p class="help-text" id="d-info"></p>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-primary" id="btn-definir">Atribuir professor ao slot</button>
+                </div>
+              </div>
+
+              <div id="modo-livre" hidden>
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label for="a-professor" class="form-label">Professor</label>
+                    <select id="a-professor" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-disciplina" class="form-label">Disciplina</label>
+                    <select id="a-disciplina" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-ano" class="form-label">Ano</label>
+                    <select id="a-ano" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-turno" class="form-label">Turno</label>
+                    <select id="a-turno" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-grupo" class="form-label">Grupo</label>
+                    <select id="a-grupo" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-dia" class="form-label">Dia da semana</label>
+                    <select id="a-dia" class="form-select"></select>
+                  </div>
+                  <div class="form-field">
+                    <label for="a-aula" class="form-label">Aula (horário)</label>
+                    <select id="a-aula" class="form-select"></select>
+                  </div>
+                </div>
+                <p class="help-text">
+                  Aulas da classe inteira vão no <strong>Grupo A</strong> (o grupo B as herda automaticamente).
+                  Use o Grupo B só quando ele tiver professor ou disciplina diferente.
+                  Horários já ocupados aparecem desativados.
+                </p>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-primary" id="btn-atribuir">Adicionar aula</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <header class="section-header">
+            <div>
+              <h2 class="section-title">3. Editar ou excluir atribuição</h2>
+              <p class="section-description">Gerencie aulas existentes na grade</p>
+            </div>
+          </header>
+          <div class="card">
+            <div class="card-body">
+              <div class="filter-bar">
+                <div class="form-field">
+                  <label for="e-ano" class="form-label">Ano</label>
+                  <select id="e-ano" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-turno" class="form-label">Turno</label>
+                  <select id="e-turno" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-grupo" class="form-label">Grupo</label>
+                  <select id="e-grupo" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-dia" class="form-label">Dia</label>
+                  <select id="e-dia" class="form-select"></select>
+                </div>
+                <div class="form-field">
+                  <label for="e-professor" class="form-label">Professor</label>
+                  <select id="e-professor" class="form-select"></select>
+                </div>
+              </div>
+
+              <div id="e-editor" class="card editor-panel" hidden>
+                <div class="card-header">
+                  <h3 class="card-title" id="e-titulo">Edição de aula</h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-grid">
+                    <div class="form-field">
+                      <label for="x-professor" class="form-label">Professor</label>
+                      <select id="x-professor" class="form-select"></select>
+                    </div>
+                    <div class="form-field">
+                      <label for="x-disciplina" class="form-label">Disciplina</label>
+                      <select id="x-disciplina" class="form-select"></select>
+                    </div>
+                    <div class="form-field">
+                      <label for="x-dia" class="form-label">Dia da semana</label>
+                      <select id="x-dia" class="form-select"></select>
+                    </div>
+                    <div class="form-field">
+                      <label for="x-aula" class="form-label">Aula (horário)</label>
+                      <select id="x-aula" class="form-select"></select>
+                    </div>
+                  </div>
+                  <div class="card-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-salvar">Salvar alterações</button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="e-lista"></div>
+
+              <div class="help-text">
+                <strong>Regras de herança:</strong> As aulas da classe inteira ficam gravadas no Grupo A e o Grupo B as herda.
+                Para mudar algo <strong>só no B</strong>, use os botões das linhas do Grupo B marcadas como &ldquo;Herdada do grupo A&rdquo;:
+                <em>Editar só p/ B</em> cria uma aula própria do B (o A não muda) e <em>Excluir só p/ B</em> tira a aula apenas do B.
+                Nas linhas do Grupo A, <em>Editar</em> e <em>Excluir</em> valem para o A e para o B que a herda;
+                <em>Excluir só p/ A</em> tira a aula do A e deixa o B com ela (como aula própria do B).
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <div class="modal-overlay" id="modal-disciplina" role="dialog" aria-modal="true" aria-labelledby="modal-disciplina-title" hidden>
+    <div class="modal">
+      <header class="modal-header" role="none" aria-label="Cabeçalho do modal">
+        <h2 class="modal-title" id="modal-disciplina-title">Nova disciplina</h2>
+        <button type="button" class="modal-close" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
+      <form id="form-disciplina" class="modal-body">
+        <div class="form-field">
+          <label for="disciplina-nome" class="form-label">Nome da disciplina</label>
+          <input type="text" id="disciplina-nome" class="form-input" placeholder="Ex.: Matemática" required autocomplete="off">
+        </div>
+      </form>
+      <footer class="modal-footer" role="none" aria-label="Rodapé do modal">
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" form="form-disciplina" class="btn btn-primary">Adicionar</button>
+      </footer>
     </div>
-  </section>
-</main>
-
-<script>
-/* ===================== Helpers ===================== */
-const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const DIAS = { 2: 'Segunda', 3: 'Terça', 4: 'Quarta', 5: 'Quinta', 6: 'Sexta' };
-const nomeTurno = (t) => (t === 'Manha' ? 'Manhã' : t);
-const hhmm = (t) => String(t || '').slice(0, 5);
-
-async function api(path) {
-  const r = await fetch(path);
-  if (!r.ok) throw new Error(`${path} → ${r.status}`);
-  return r.json();
-}
-function mostrarErro(msg) {
-  const e = $('#erro');
-  e.textContent = msg;
-  e.style.display = 'block';
-}
-
-const dados = { professores: [], disciplinas: [], turmas: [], horarios: [], grade: [], excecoes: [] };
-
-/* ===================== Abas ===================== */
-document.querySelectorAll('.tab').forEach((btn) =>
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn));
-    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === btn.dataset.tab));
-    if (btn.dataset.tab === 'avancada') $('#busca').focus();
-  })
-);
-
-/* ===================== Carga inicial ===================== */
-async function carregar() {
-  try {
-    const [professores, disciplinas, turmas, horarios, grade, excecoes] = await Promise.all([
-      api('/professores'), api('/disciplinas'), api('/turmas'), api('/horarios'), api('/grade?expandir=0'),
-      api('/grade/excecoes').catch(() => []),
-    ]);
-    Object.assign(dados, { professores, disciplinas, turmas, horarios, grade, excecoes });
-  } catch (e) {
-    mostrarErro('Não foi possível carregar a API. Abra esta página por http://localhost:3000 com o servidor e o MySQL do XAMPP ligados. (' + e.message + ')');
-    return;
-  }
-  preencherFiltros();
-  preencherAdicoes();
-  consultarGrade();
-  montarIndice();
-  buscar();
-}
-
-/* ===================== ABA 1: Grade principal ===================== */
-function opcoes(sel, itens, rotuloTodos) {
-  sel.innerHTML = `<option value="">${esc(rotuloTodos)}</option>` +
-    itens.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
-}
-const unicos = (arr) => [...new Set(arr)];
-
-function preencherFiltros() {
-  opcoes($('#f-ano'), unicos(dados.turmas.map((t) => t.ano)).sort().map((a) => [a, `${a}º ano`]), 'Todos');
-  opcoes($('#f-turno'), unicos(dados.turmas.map((t) => t.turno)).map((t) => [t, nomeTurno(t)]), 'Todos');
-  opcoes($('#f-grupo'), unicos(dados.turmas.map((t) => t.grupo)).sort().map((g) => [g, `Grupo ${g}`]), 'Todos');
-  opcoes($('#f-professor'), dados.professores.map((p) => [p.id, p.nome]), 'Todos');
-  opcoes($('#f-disciplina'), dados.disciplinas.map((d) => [d.id, d.nome]), 'Todas');
-  opcoes($('#f-dia'), unicos(dados.horarios.map((h) => h.dia_semana)).sort().map((d) => [d, DIAS[d]]), 'Todos');
-}
-
-const FILTROS = ['ano', 'turno', 'grupo', 'professor', 'disciplina', 'dia'];
-FILTROS.forEach((f) => $('#f-' + f).addEventListener('change', consultarGrade));
-$('#limpar').addEventListener('click', () => {
-  FILTROS.forEach((f) => ($('#f-' + f).value = ''));
-  consultarGrade();
-});
-
-let linhasAtuais = [];
-let filtrosAtuais = {};
-
-async function consultarGrade() {
-  const v = Object.fromEntries(FILTROS.map((f) => [f, $('#f-' + f).value]));
-  const qs = new URLSearchParams();
-  if (v.ano) qs.set('ano', v.ano);
-  if (v.turno) qs.set('turno', v.turno);
-  if (v.grupo) qs.set('grupo', v.grupo);
-  if (v.professor) qs.set('professor_id', v.professor);
-  if (v.disciplina) qs.set('disciplina_id', v.disciplina);
-
-  let linhas;
-  try {
-    linhas = await api('/grade' + (qs.toString() ? '?' + qs : ''));
-  } catch (e) {
-    mostrarErro('Erro ao consultar a grade: ' + e.message);
-    return;
-  }
-  // aviso se o servidor ainda estiver rodando o routes.js antigo (sem o campo classe_inteira)
-  if (linhas.length && !('classe_inteira' in linhas[0])) {
-    mostrarErro('O servidor está rodando uma versão ANTIGA do routes.js, por isso o grupo B mostra só as aulas próprias. Pare o servidor (Ctrl + C) e rode npm start de novo.');
-  } else {
-    $('#erro').style.display = 'none';
-  }
-
-  // a API não filtra por dia; filtramos aqui
-  if (v.dia) linhas = linhas.filter((l) => String(l.dia_semana) === v.dia);
-
-  linhasAtuais = linhas;
-  filtrosAtuais = v;
-  renderGrade();
-}
-$('#f-agrupar').addEventListener('change', renderGrade);
-
-function renderGrade() {
-  const linhas = linhasAtuais, v = filtrosAtuais;
-  const modo = $('#f-agrupar').value;
-
-  if (!linhas.length) {
-    $('#contagem').textContent = '0 aula(s) encontrada(s)';
-    $('#resultado').innerHTML = '<div class="scroll"><div class="vazio">Nenhuma aula encontrada para esses filtros.</div></div>';
-    return;
-  }
-
-  // turma completa + agrupamento por turma = quadro semanal
-  if (v.ano && v.turno && v.grupo && modo === 'turma') {
-    $('#contagem').textContent = `${linhas.length} aula(s) encontrada(s)`;
-    $('#resultado').innerHTML = renderGridSemanal(linhas, v.turno, v.dia);
-    return;
-  }
-
-  const grupos = agrupar(linhas, modo);
-  $('#contagem').textContent = `${linhas.length} aula(s) em ${grupos.length} grupo(s)`;
-  $('#resultado').innerHTML = grupos.map((g) => renderCard(g, modo)).join('');
-}
-
-// ---- agrupamento em blocos (um card por turma / dia / professor / disciplina) ----
-const CHAVE = {
-  turma: (l) => `${l.ano}|${l.turno}|${l.grupo}`,
-  dia: (l) => l.dia_semana,
-  professor: (l) => l.professor_id,
-  disciplina: (l) => l.disciplina_id,
-};
-const TITULO = {
-  turma: (l) => `${l.ano}º ano · ${nomeTurno(l.turno)} · Grupo ${l.grupo}`,
-  dia: (l) => l.dia,
-  professor: (l) => l.professor,
-  disciplina: (l) => l.disciplina,
-};
-
-function agrupar(linhas, modo) {
-  const mapa = new Map();
-  linhas.forEach((l) => {
-    const k = CHAVE[modo](l);
-    if (!mapa.has(k)) mapa.set(k, { chave: k, titulo: TITULO[modo](l), linhas: [] });
-    mapa.get(k).linhas.push(l);
-  });
-  const grupos = [...mapa.values()];
-  if (modo === 'dia') grupos.sort((a, b) => a.chave - b.chave);
-  else if (modo !== 'turma') grupos.sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'));
-  grupos.forEach((g) => g.linhas.sort((a, b) =>
-    a.dia_semana - b.dia_semana || a.numero_aula - b.numero_aula ||
-    a.ano - b.ano || a.turno.localeCompare(b.turno) || a.grupo.localeCompare(b.grupo)));
-  return grupos;
-}
-
-const COLUNAS = [
-  { id: 'turma', nome: 'Turma', cel: (l) => `${esc(l.ano)}º ano · Grupo ${esc(l.grupo)}<small>${esc(nomeTurno(l.turno))}</small>` },
-  { id: 'dia', nome: 'Dia', cel: (l) => esc(l.dia) },
-  { id: 'aula', nome: 'Aula', cel: (l) => `${esc(l.numero_aula)}ª aula<small>${esc(hhmm(l.hora_inicio))}–${esc(hhmm(l.hora_fim))}</small>` },
-  { id: 'disciplina', nome: 'Disciplina', cel: (l) => `${esc(l.disciplina)}${l.classe_inteira ? '<small>Classe inteira (com o grupo A)</small>' : ''}` },
-  { id: 'professor', nome: 'Professor', cel: (l) => esc(l.professor) },
-];
-
-function renderCard(g, modo) {
-  const cols = COLUNAS.filter((c) => c.id !== modo);   // a coluna do agrupamento já está no título
-  const cab = cols.map((c) => `<th>${c.nome}</th>`).join('');
-  const corpo = g.linhas.map((l) => `<tr>${cols.map((c) => `<td>${c.cel(l)}</td>`).join('')}</tr>`).join('');
-  return `<details class="gcard">
-    <summary><span class="t">${esc(g.titulo)}</span><span class="n">${g.linhas.length} aula(s)</span></summary>
-    <div class="scroll"><table><thead><tr>${cab}</tr></thead><tbody>${corpo}</tbody></table></div>
-  </details>`;
-}
-
-// Quando ano + turno + grupo estão escolhidos, mostra a grade semanal (aulas × dias)
-function renderGridSemanal(linhas, turno, diaFiltro) {
-  const dias = diaFiltro ? [Number(diaFiltro)] : [2, 3, 4, 5, 6];
-  // linhas do quadro = aulas que realmente aparecem nos resultados
-  const horas = {};
-  linhas.forEach((l) => {
-    horas[l.numero_aula] = horas[l.numero_aula] || `${hhmm(l.hora_inicio)}–${hhmm(l.hora_fim)}`;
-  });
-  const aulas = Object.keys(horas).map(Number).sort((a, b) => a - b);
-  const mapa = {};
-  linhas.forEach((l) => (mapa[`${l.dia_semana}-${l.numero_aula}`] = l));
-
-  const corpo = aulas.map((n) => `<tr><td>${n}ª aula<small>${esc(horas[n])}</small></td>` +
-    dias.map((d) => {
-      const l = mapa[`${d}-${n}`];
-      return `<td class="cell">${l ? `<strong>${esc(l.disciplina)}</strong><small>${esc(l.professor)}${l.classe_inteira ? ' · classe inteira' : ''}</small>` : '<small>—</small>'}</td>`;
-    }).join('') + '</tr>').join('');
-
-  return `<div class="scroll"><table class="grid">
-    <thead><tr><th></th>${dias.map((d) => `<th>${DIAS[d]}</th>`).join('')}</tr></thead>
-    <tbody>${corpo}</tbody></table></div>`;
-}
-
-/* ===================== ABA 2: Consulta avançada ===================== */
-const CATEGORIAS = {
-  professores: 'Professores',
-  disciplinas: 'Disciplinas',
-  turmas: 'Turmas',
-  horarios: 'Horários',
-  grade: 'Aulas na grade',
-};
-let indice = [];
-let catAtiva = 'todas';
-
-// minúsculas, sem acento, sem º/ª
-const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[ºª°]/g, '').toLowerCase();
-const palavras = (s) => norm(s).split(/[^a-z0-9]+/).filter(Boolean);
-
-function montarIndice() {
-  const aulasProf = {}, aulasDisc = {};
-  dados.grade.forEach((g) => {
-    aulasProf[g.professor_id] = (aulasProf[g.professor_id] || 0) + 1;
-    aulasDisc[g.disciplina_id] = (aulasDisc[g.disciplina_id] || 0) + 1;
-  });
-
-  indice = [];
-  dados.professores.forEach((p) => indice.push({
-    cat: 'professores', titulo: p.nome, sub: `${aulasProf[p.id] || 0} aula(s) na grade`, texto: p.nome,
-  }));
-  dados.disciplinas.forEach((d) => indice.push({
-    cat: 'disciplinas', titulo: d.nome, sub: `${aulasDisc[d.id] || 0} aula(s) na grade`, texto: d.nome,
-  }));
-  dados.turmas.forEach((t) => indice.push({
-    cat: 'turmas', titulo: `${t.ano}º ano ${t.grupo}`, sub: nomeTurno(t.turno),
-    texto: `turma ${t.ano} ano ${t.grupo} ${t.turno}`,
-  }));
-  dados.horarios.forEach((h) => indice.push({
-    cat: 'horarios', titulo: `${DIAS[h.dia_semana]} · ${h.numero_aula}ª aula`,
-    sub: `${nomeTurno(h.turno)} · ${hhmm(h.hora_inicio)}–${hhmm(h.hora_fim)}`,
-    texto: `${DIAS[h.dia_semana]} ${h.numero_aula} aula ${h.turno} ${hhmm(h.hora_inicio)}`,
-  }));
-  dados.grade.forEach((g) => indice.push({
-    cat: 'grade', titulo: `${g.disciplina} — ${g.professor}`,
-    sub: `${g.ano}º ${g.grupo} · ${nomeTurno(g.turno)} · ${g.dia} · ${g.numero_aula}ª aula (${hhmm(g.hora_inicio)})`,
-    texto: `${g.disciplina} ${g.professor} ${g.ano} ano ${g.grupo} ${g.turno} ${g.dia} ${g.numero_aula} aula`,
-  }));
-  indice.forEach((e) => (e.palavras = palavras(e.texto)));
-}
-
-// distância de Levenshtein (para tolerar erros de digitação)
-function lev(a, b) {
-  const m = a.length, n = b.length;
-  if (Math.abs(m - n) > 2) return 3;
-  let prev = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    const cur = [i];
-    for (let j = 1; j <= n; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    }
-    prev = cur;
-  }
-  return prev[n];
-}
-
-// pontuação de um termo digitado contra as palavras de uma entrada (0 = não combina)
-function pontuarTermo(termo, palavrasEntrada) {
-  let melhor = 0;
-  for (const w of palavrasEntrada) {
-    let s = 0;
-    if (w === termo) s = 10;
-    else if (termo.length >= 3 && w.startsWith(termo)) s = 8;
-    else if (termo.length >= 3 && w.includes(termo)) s = 5;
-    else if (termo.length >= 4) {
-      const tol = termo.length >= 7 ? 2 : 1;
-      const d = Math.min(lev(termo, w), lev(termo, w.slice(0, termo.length)));
-      if (d <= tol) s = 4 - d;
-    }
-    if (s > melhor) melhor = s;
-  }
-  return melhor;
-}
-
-function buscar() {
-  const termos = palavras($('#busca').value);
-  const alvo = $('#busca-resultado');
-
-  if (!termos.length) {
-    $('#chips').innerHTML = '';
-    alvo.innerHTML = '<div class="vazio">Digite para pesquisar. A busca aceita aproximações e erros de digitação (ex.: "matematca", "mariya") e combina várias palavras (ex.: "1 manha A", "joao quarta").</div>';
-    return;
-  }
-
-  // todos os termos precisam combinar; soma das pontuações define a ordem
-  const achados = [];
-  for (const e of indice) {
-    let total = 0, ok = true;
-    for (const t of termos) {
-      const s = pontuarTermo(t, e.palavras);
-      if (!s) { ok = false; break; }
-      total += s;
-    }
-    if (ok) achados.push({ ...e, score: total });
-  }
-  achados.sort((a, b) => b.score - a.score || a.titulo.localeCompare(b.titulo, 'pt-BR'));
-
-  const porCat = {};
-  achados.forEach((a) => (porCat[a.cat] = (porCat[a.cat] || 0) + 1));
-  if (catAtiva !== 'todas' && !porCat[catAtiva]) catAtiva = 'todas';
-
-  // chips de categoria com contagem
-  const chips = [['todas', 'Todas', achados.length], ...Object.entries(CATEGORIAS).map(([k, l]) => [k, l, porCat[k] || 0])];
-  $('#chips').innerHTML = chips.map(([k, l, n]) =>
-    `<button class="chip ${k === catAtiva ? 'active' : ''}" data-cat="${k}">${esc(l)} (${n})</button>`).join('');
-  document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => { catAtiva = c.dataset.cat; buscar(); }));
-
-  if (!achados.length) {
-    alvo.innerHTML = '<div class="vazio">Nada encontrado para essa pesquisa.</div>';
-    return;
-  }
-
-  const LIMITE = 40;
-  alvo.innerHTML = Object.entries(CATEGORIAS)
-    .filter(([k]) => porCat[k] && (catAtiva === 'todas' || catAtiva === k))
-    .map(([k, rotulo]) => {
-      const lista = achados.filter((a) => a.cat === k);
-      return `<div class="grupo">
-        <h2>${esc(rotulo)} <code>/${k === 'grade' ? 'grade' : k}</code></h2>
-        ${lista.slice(0, LIMITE).map((a) => `<div class="res">${esc(a.titulo)}<small>${esc(a.sub)}</small></div>`).join('')}
-        ${lista.length > LIMITE ? `<div class="mais">+ ${lista.length - LIMITE} resultado(s) — refine a pesquisa</div>` : ''}
-      </div>`;
-    }).join('');
-}
-
-let timer;
-$('#busca').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(buscar, 150); });
-
-/* ===================== Expandir / recolher cards ===================== */
-$('#expandir').addEventListener('click', () => document.querySelectorAll('#resultado details').forEach((d) => (d.open = true)));
-$('#recolher').addEventListener('click', () => document.querySelectorAll('#resultado details').forEach((d) => (d.open = false)));
-
-/* ===================== ABA 3: Adições ===================== */
-const A_DEFINIR = 'A definir';
-let editando = null;   // aula da grade em edição
-
-async function enviar(path, corpo, metodo = 'POST') {
-  const r = await fetch(path, {
-    method: metodo,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(corpo),
-  });
-  const resp = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(resp.erro || `Erro ${r.status}`);
-  return resp;
-}
-async function remover(path) {
-  const r = await fetch(path, { method: 'DELETE' });
-  if (!r.ok) {
-    const resp = await r.json().catch(() => ({}));
-    throw new Error(resp.erro || `Erro ${r.status}`);
-  }
-}
-function aviso(id, texto, ok) {
-  const e = $('#' + id);
-  e.textContent = texto;
-  e.className = 'msg ' + (ok ? 'ok' : 'err');
-  e.style.display = 'block';
-}
-
-/* ---- helpers ---- */
-const aulaRotulo = (n) => (n === 9 ? 'Contraturno' : `${n}ª aula`);
-const ordemGrade = (a, b) =>
-  a.ano - b.ano || a.turno.localeCompare(b.turno) || a.grupo.localeCompare(b.grupo) ||
-  a.dia_semana - b.dia_semana || a.numero_aula - b.numero_aula;
-const profsReais = () => dados.professores.filter((p) => p.nome !== A_DEFINIR);
-const ANOS = [1, 2, 3].map((a) => [a, `${a}º ano`]);
-const TURNOS = [['Manha', 'Manhã'], ['Tarde', 'Tarde']];
-const GRUPOS = [['A', 'Grupo A'], ['B', 'Grupo B']];
-const DIAS_OPC = [2, 3, 4, 5, 6].map((d) => [d, DIAS[d]]);
-
-// mantém a opção escolhida ao refazer a lista
-function repovoar(sel, itens, rotulo) {
-  const atual = sel.value;
-  opcoes(sel, itens, rotulo);
-  if ([...sel.options].some((o) => o.value === atual)) sel.value = atual;
-}
-
-// por que um horário está ocupado? ('' = livre). Ignora a própria aula em edição.
-function ocupacao({ turno, dia, aula, ano, grupo, profId, ignorarId }) {
-  const mesmo = (g) => g.id !== ignorarId && g.turno === turno && g.dia_semana === dia && g.numero_aula === aula;
-  if (ano && grupo) {
-    const t = dados.grade.find((g) => mesmo(g) && g.ano === ano && g.grupo === grupo);
-    if (t) return ` — turma já tem ${t.disciplina}`;
-  }
-  if (profId) {
-    const p = dados.grade.find((g) => mesmo(g) && g.professor_id === profId);
-    if (p) return ` — professor está no ${p.ano}º ano, grupo ${p.grupo}`;
-  }
-  return '';
-}
-
-// opções de aula (horários do turno/dia), desativando as ocupadas
-function opcoesAulas(turno, dia, filtro) {
-  const hs = dados.horarios
-    .filter((x) => x.turno === turno && x.dia_semana === dia)
-    .sort((a, b) => a.numero_aula - b.numero_aula);
-  if (!hs.length) return null;
-  return hs.map((x) => {
-    const motivo = ocupacao({ turno, dia, aula: x.numero_aula, ...filtro });
-    return `<option value="${x.numero_aula}"${motivo ? ' disabled' : ''}>${aulaRotulo(x.numero_aula)} (${hhmm(x.hora_inicio)}–${hhmm(x.hora_fim)})${esc(motivo)}</option>`;
-  }).join('');
-}
-
-/* ---- preenchimento ---- */
-function preencherAdicoes() {
-  opcoes($('#a-ano'), ANOS, 'Selecione...');
-  opcoes($('#a-turno'), TURNOS, 'Selecione...');
-  opcoes($('#a-grupo'), [['A', 'Grupo A (ou classe inteira)'], ['B', 'Grupo B']], 'Selecione...');
-  opcoes($('#a-dia'), DIAS_OPC, 'Selecione...');
-  opcoes($('#a-disciplina'), dados.disciplinas.map((d) => [d.id, d.nome]), 'Selecione...');
-
-  opcoes($('#e-ano'), ANOS, 'Todos');
-  opcoes($('#e-turno'), TURNOS, 'Todos');
-  opcoes($('#e-grupo'), GRUPOS, 'Todos');
-  opcoes($('#e-dia'), DIAS_OPC, 'Todos');
-
-  opcoes($('#x-dia'), DIAS_OPC, 'Selecione...');
-  opcoes($('#x-disciplina'), dados.disciplinas.map((d) => [d.id, d.nome]), 'Selecione...');
-  atualizarListasAdicoes();
-}
-
-function atualizarListasAdicoes() {
-  const todos = dados.professores.map((p) => [p.id, p.nome]);
-  repovoar($('#a-professor'), profsReais().map((p) => [p.id, p.nome]), 'Selecione...');
-  repovoar($('#e-professor'), todos, 'Todos');
-  repovoar($('#x-professor'), todos, 'Selecione...');
-  atualizarSlotsDefinir();
-  atualizarAulasLivre();
-  renderListaEdicao();
-}
-
-// recarrega dados do servidor e atualiza todas as abas
-async function recarregarDados() {
-  const [professores, disciplinas, grade, excecoes] = await Promise.all([
-    api('/professores'), api('/disciplinas'), api('/grade?expandir=0'),
-    api('/grade/excecoes').catch(() => []),
-  ]);
-  Object.assign(dados, { professores, disciplinas, grade, excecoes });
-  repovoar($('#f-professor'), professores.map((p) => [p.id, p.nome]), 'Todos');
-  atualizarListasAdicoes();
-  montarIndice();
-  buscar();
-}
-async function aposAlteracao() {
-  await recarregarDados();
-  await consultarGrade();
-}
-
-/* ---- 1 · novo professor ---- */
-async function adicionarProfessor() {
-  const nome = $('#n-nome').value.trim().replace(/\s+/g, ' ');
-  if (!nome) return aviso('msg-prof', 'Digite o nome do professor.', false);
-  const existente = dados.professores.find((p) => norm(p.nome) === norm(nome));
-  if (existente) return aviso('msg-prof', `"${existente.nome}" já está na lista.`, false);
-  try {
-    const novo = await enviar('/professores', { nome });
-    await recarregarDados();
-    $('#n-nome').value = '';
-    aviso('msg-prof', `Professor "${novo.nome}" adicionado.`, true);
-  } catch (e) {
-    aviso('msg-prof', e.message, false);
-  }
-}
-$('#btn-prof').addEventListener('click', adicionarProfessor);
-$('#n-nome').addEventListener('keydown', (e) => { if (e.key === 'Enter') adicionarProfessor(); });
-
-/* ---- 2 · adicionar à grade ---- */
-document.querySelectorAll('#modo-grade .chip').forEach((c) =>
-  c.addEventListener('click', () => {
-    document.querySelectorAll('#modo-grade .chip').forEach((x) => x.classList.toggle('active', x === c));
-    $('#modo-definir').style.display = c.dataset.modo === 'definir' ? '' : 'none';
-    $('#modo-livre').style.display = c.dataset.modo === 'livre' ? '' : 'none';
-  })
-);
-
-// 2a · slots cujo professor está "A definir"
-const pendentes = () => dados.grade.filter((g) => g.professor === A_DEFINIR).sort(ordemGrade);
-const rotuloSlot = (g) =>
-  `${g.ano}º ano · ${nomeTurno(g.turno)} · Grupo ${g.grupo} · ${g.dia} · ${aulaRotulo(g.numero_aula)} (${hhmm(g.hora_inicio)}–${hhmm(g.hora_fim)}) — ${g.disciplina}`;
-
-function atualizarSlotsDefinir() {
-  const sel = $('#d-slot');
-  const atual = sel.value;
-  const pend = pendentes();
-  sel.innerHTML = pend.length
-    ? '<option value="">Selecione...</option>' + pend.map((g) => `<option value="${g.id}">${esc(rotuloSlot(g))}</option>`).join('')
-    : '<option value="">Nenhum slot a definir</option>';
-  if (atual && [...sel.options].some((o) => o.value === atual)) sel.value = atual;
-  $('#d-info').textContent = pend.length
-    ? `${pend.length} slot(s) aguardando professor. Professores já ocupados no horário aparecem desativados.`
-    : 'Todas as aulas já têm professor. Para criar uma aula nova, use "Nova aula em horário livre".';
-  atualizarProfDefinir();
-}
-
-function atualizarProfDefinir() {
-  const sel = $('#d-professor');
-  const atual = sel.value;
-  const slot = dados.grade.find((g) => String(g.id) === $('#d-slot').value);
-  sel.innerHTML = '<option value="">Selecione...</option>' + profsReais().map((p) => {
-    const motivo = slot
-      ? ocupacao({ turno: slot.turno, dia: slot.dia_semana, aula: slot.numero_aula, profId: p.id, ignorarId: slot.id })
-      : '';
-    return `<option value="${p.id}"${motivo ? ' disabled' : ''}>${esc(p.nome)}${esc(motivo)}</option>`;
-  }).join('');
-  if (atual && [...sel.options].some((o) => o.value === atual && !o.disabled)) sel.value = atual;
-}
-$('#d-slot').addEventListener('change', atualizarProfDefinir);
-
-$('#btn-definir').addEventListener('click', async () => {
-  const slotId = Number($('#d-slot').value);
-  const profId = Number($('#d-professor').value);
-  if (!slotId || !profId) return aviso('msg-definir', 'Escolha o slot e o professor.', false);
-  const slot = dados.grade.find((g) => g.id === slotId);
-  const nome = $('#d-professor').selectedOptions[0].text;
-  try {
-    await enviar('/grade/' + slotId, { professor_id: profId }, 'PUT');
-    await aposAlteracao();
-    aviso('msg-definir', `${nome} atribuído: ${slot.disciplina} · ${slot.ano}º ano ${nomeTurno(slot.turno)}, grupo ${slot.grupo} · ${slot.dia}, ${aulaRotulo(slot.numero_aula)}.`, true);
-  } catch (e) {
-    aviso('msg-definir', e.message, false);
-  }
-});
-
-// 2b · nova aula em horário livre
-function atualizarAulasLivre() {
-  const sel = $('#a-aula');
-  const turno = $('#a-turno').value, dia = Number($('#a-dia').value);
-  const atual = sel.value;
-  if (!turno || !dia) { sel.innerHTML = '<option value="">Escolha turno e dia</option>'; return; }
-  const html = opcoesAulas(turno, dia, {
-    ano: Number($('#a-ano').value) || null,
-    grupo: $('#a-grupo').value,
-    profId: Number($('#a-professor').value) || null,
-  });
-  if (!html) { sel.innerHTML = '<option value="">Nenhum horário cadastrado</option>'; return; }
-  sel.innerHTML = '<option value="">Selecione...</option>' + html;
-  if (atual && [...sel.options].some((o) => o.value === atual && !o.disabled)) sel.value = atual;
-}
-['a-professor', 'a-ano', 'a-turno', 'a-grupo', 'a-dia'].forEach((id) =>
-  $('#' + id).addEventListener('change', atualizarAulasLivre));
-
-$('#btn-atribuir').addEventListener('click', async () => {
-  const campos = {
-    professor_id: Number($('#a-professor').value),
-    disciplina_id: Number($('#a-disciplina').value),
-    ano: Number($('#a-ano').value),
-    turno: $('#a-turno').value,
-    grupo: $('#a-grupo').value,
-    dia_semana: Number($('#a-dia').value),
-    numero_aula: Number($('#a-aula').value),
-  };
-  if (Object.values(campos).some((v) => !v)) return aviso('msg-aula', 'Preencha todos os campos.', false);
-  const texto = (id) => $('#' + id).selectedOptions[0].text;
-  const resumo = `${texto('a-professor')} → ${texto('a-disciplina')} · ${campos.ano}º ano ${nomeTurno(campos.turno)}, grupo ${campos.grupo} · ${DIAS[campos.dia_semana]}, ${aulaRotulo(campos.numero_aula)}`;
-  try {
-    await enviar('/grade', campos);
-    await aposAlteracao();
-    aviso('msg-aula', `Aula adicionada: ${resumo}`, true);
-  } catch (e) {
-    aviso('msg-aula', e.message, false);
-  }
-});
-
-/* ---- 3 · editar / excluir ---- */
-const LIMITE_LISTA = 60;
-const chaveHorario = (g) => `${g.ano}|${g.turno}|${g.horario_id}`;
-
-// aulas reais + o que o grupo B herda do A (ou deixou de ter, nas exceções)
-function linhasEdicao() {
-  const out = dados.grade.map((g) => ({ ...g, tipo: 'real' }));
-  const comB = new Set(dados.grade.filter((g) => g.grupo === 'B').map(chaveHorario));
-  const exc = new Map(dados.excecoes.map((e) => [chaveHorario(e), e]));
-  const reaisA = new Map(out.filter((g) => g.grupo === 'A').map((g) => [g.id, g]));
-  dados.grade.filter((g) => g.grupo === 'A').forEach((a) => {
-    const k = chaveHorario(a);
-    if (comB.has(k)) return;
-    const e = exc.get(k);
-    if (!e) reaisA.get(a.id).bHerda = true;      // o B herda esta aula do A
-    out.push({ ...a, grupo: 'B', tipo: e ? 'excecao' : 'herdada', excecao_id: e ? e.id : null });
-  });
-  return out;
-}
-
-function celulaDisciplina(g) {
-  if (g.tipo === 'herdada') return `${esc(g.disciplina)}<small>Herdada do grupo A</small>`;
-  if (g.tipo === 'excecao') return `<s>${esc(g.disciplina)}</s><small>Grupo B não tem esta aula (o A mantém)</small>`;
-  if (g.grupo === 'B') return `${esc(g.disciplina)}<small>Aula própria do grupo B</small>`;
-  return esc(g.disciplina);
-}
-function botoesAcao(g) {
-  const b = (acao, rotulo, classe = '') =>
-    `<button class="mini ${classe}" data-acao="${acao}" data-tipo="${g.tipo}" data-id="${g.id}">${rotulo}</button>`;
-  if (g.tipo === 'herdada') return b('editarB', 'Editar só p/ B') + b('excluirB', 'Excluir só p/ B', 'perigo');
-  if (g.tipo === 'excecao') return b('restaurarB', 'Restaurar no B');
-  return b('editar', 'Editar') + b('excluir', 'Excluir', 'perigo') +
-    (g.grupo === 'A' && g.bHerda ? b('excluirA', 'Excluir só p/ A', 'perigo') : '');
-}
-
-function renderListaEdicao() {
-  const f = {
-    ano: $('#e-ano').value, turno: $('#e-turno').value, grupo: $('#e-grupo').value,
-    dia: $('#e-dia').value, prof: $('#e-professor').value,
-  };
-  const lista = linhasEdicao()
-    .filter((g) =>
-      (!f.ano || String(g.ano) === f.ano) && (!f.turno || g.turno === f.turno) &&
-      (!f.grupo || g.grupo === f.grupo) && (!f.dia || String(g.dia_semana) === f.dia) &&
-      (!f.prof || (g.tipo !== 'excecao' && String(g.professor_id) === f.prof)))
-    .sort((a, b) => ordemGrade(a, b) || a.tipo.localeCompare(b.tipo));
-
-  if (!lista.length) {
-    $('#e-lista').innerHTML = '<div class="scroll"><div class="vazio">Nenhuma aula com esses filtros.</div></div>';
-    return;
-  }
-  const mostrar = lista.slice(0, LIMITE_LISTA);
-  $('#e-lista').innerHTML = `<div class="scroll"><table>
-    <thead><tr><th>Turma</th><th>Dia</th><th>Aula</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead>
-    <tbody>${mostrar.map((g) => `<tr class="${g.tipo === 'excecao' ? 'excecao' : ''}">
-      <td>${esc(g.ano)}º ano · Grupo ${esc(g.grupo)}<small>${esc(nomeTurno(g.turno))}</small></td>
-      <td>${esc(g.dia)}</td>
-      <td>${esc(aulaRotulo(g.numero_aula))}<small>${esc(hhmm(g.hora_inicio))}–${esc(hhmm(g.hora_fim))}</small></td>
-      <td>${celulaDisciplina(g)}</td>
-      <td>${g.tipo === 'excecao' ? '—' : esc(g.professor)}</td>
-      <td class="acoes">${botoesAcao(g)}</td></tr>`).join('')}</tbody></table></div>` +
-    (lista.length > LIMITE_LISTA
-      ? `<div class="mais">Mostrando ${LIMITE_LISTA} de ${lista.length} aulas — use os filtros para refinar.</div>` : '');
-}
-['e-ano', 'e-turno', 'e-grupo', 'e-dia', 'e-professor'].forEach((id) =>
-  $('#' + id).addEventListener('change', renderListaEdicao));
-
-$('#e-lista').addEventListener('click', (ev) => {
-  const b = ev.target.closest('button[data-acao]');
-  if (!b) return;
-  const g = linhasEdicao().find((x) => String(x.id) === b.dataset.id && x.tipo === b.dataset.tipo);
-  if (!g) return;
-  const acoes = { editar: abrirEditor, editarB: abrirEditor, excluir: excluirAula, excluirB: excluirSoB, excluirA: excluirSoA, restaurarB: restaurarB };
-  acoes[b.dataset.acao](g);
-});
-
-const resumoAula = (g) =>
-  `${g.ano}º ano ${nomeTurno(g.turno)}, grupo ${g.grupo} · ${g.dia}, ${aulaRotulo(g.numero_aula)} · ${g.disciplina}${g.professor ? ` (${g.professor})` : ''}`;
-
-function abrirEditor(g) {
-  editando = g;
-  const soB = g.tipo === 'herdada';
-  $('#e-titulo').textContent = (soB ? 'Editando SÓ para o grupo B (o grupo A não muda): ' : 'Editando: ') + resumoAula(g);
-  $('#x-professor').value = String(g.professor_id);
-  $('#x-disciplina').value = String(g.disciplina_id);
-  $('#x-dia').value = String(g.dia_semana);
-  $('#x-dia').disabled = soB;
-  $('#x-aula').disabled = soB;
-  if (soB) {
-    // aula própria do B fica no mesmo horário; só professor/disciplina mudam
-    $('#x-aula').innerHTML = `<option value="${g.numero_aula}">${aulaRotulo(g.numero_aula)} (${hhmm(g.hora_inicio)}–${hhmm(g.hora_fim)})</option>`;
-  } else {
-    atualizarAulasEdicao(g.numero_aula);
-  }
-  $('#msg-edit').style.display = 'none';
-  $('#e-editor').style.display = 'block';
-  $('#e-editor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-function fecharEditor() {
-  editando = null;
-  $('#e-editor').style.display = 'none';
-}
-
-function atualizarAulasEdicao(preferida) {
-  if (!editando || editando.tipo === 'herdada') return;
-  const sel = $('#x-aula');
-  const dia = Number($('#x-dia').value);
-  const alvo = preferida ?? Number(sel.value);
-  if (!dia) { sel.innerHTML = '<option value="">Escolha o dia</option>'; return; }
-  const html = opcoesAulas(editando.turno, dia, {
-    ano: editando.ano, grupo: editando.grupo,
-    profId: Number($('#x-professor').value) || null, ignorarId: editando.id,
-  });
-  if (!html) { sel.innerHTML = '<option value="">Nenhum horário cadastrado</option>'; return; }
-  sel.innerHTML = '<option value="">Selecione...</option>' + html;
-  if (alvo && [...sel.options].some((o) => o.value === String(alvo) && !o.disabled)) sel.value = String(alvo);
-}
-$('#x-dia').addEventListener('change', () => atualizarAulasEdicao());
-$('#x-professor').addEventListener('change', () => atualizarAulasEdicao());
-$('#btn-cancelar').addEventListener('click', fecharEditor);
-
-$('#btn-salvar').addEventListener('click', async () => {
-  if (!editando) return;
-  const g = editando;
-  const professor_id = Number($('#x-professor').value);
-  const disciplina_id = Number($('#x-disciplina').value);
-
-  try {
-    if (g.tipo === 'herdada') {
-      // cria aula própria do grupo B no mesmo horário (o grupo A não muda)
-      if (!professor_id || !disciplina_id) return aviso('msg-edit', 'Preencha todos os campos.', false);
-      if (professor_id === g.professor_id) {
-        return aviso('msg-edit', 'Escolha um professor diferente do grupo A: o B já recebe esta aula com ele.', false);
-      }
-      await enviar('/grade', {
-        professor_id, disciplina_id, ano: g.ano, turno: g.turno, grupo: 'B',
-        dia_semana: g.dia_semana, numero_aula: g.numero_aula,
-      });
-      fecharEditor();
-      await aposAlteracao();
-      aviso('msg-edit', `Grupo B agora tem aula própria com ${$('#x-professor').selectedOptions[0].text}. O grupo A continua igual.`, true);
-    } else {
-      const corpo = { professor_id, disciplina_id, dia_semana: Number($('#x-dia').value), numero_aula: Number($('#x-aula').value) };
-      if (Object.values(corpo).some((v) => !v)) return aviso('msg-edit', 'Preencha todos os campos.', false);
-      await enviar('/grade/' + g.id, corpo, 'PUT');
-      fecharEditor();
-      await aposAlteracao();
-      aviso('msg-edit', 'Aula atualizada.', true);
-    }
-  } catch (e) {
-    aviso('msg-edit', e.message, false);
-  }
-});
-
-// excluir uma aula real (do A ou aula própria do B)
-async function excluirAula(g) {
-  const bHerda = g.grupo === 'A' &&
-    linhasEdicao().some((x) => x.tipo === 'herdada' && x.id === g.id);
-  const aviso1 = g.grupo === 'B'
-    ? '\n\nEsta é uma aula própria do grupo B. Ao excluir, o B volta a seguir a aula do grupo A (se houver).'
-    : bHerda ? '\n\nO grupo B herda esta aula e também deixará de tê-la. Para tirar de só um grupo, use "Excluir só p/ A" (nesta linha) ou "Excluir só p/ B" (na linha do grupo B).' : '';
-  if (!confirm(`Excluir esta aula da grade?\n\n${resumoAula(g)}${aviso1}`)) return;
-  try {
-    await remover('/grade/' + g.id);
-    if (editando && editando.id === g.id) fecharEditor();
-    await aposAlteracao();
-    aviso('msg-edit', `Aula excluída: ${resumoAula(g)}`, true);
-  } catch (e) {
-    aviso('msg-edit', e.message, false);
-  }
-}
-
-// exclui só do grupo A: o B fica com a aula, agora como aula própria dele
-async function excluirSoA(g) {
-  if (!confirm(`Excluir esta aula SÓ do grupo A?\nO grupo B continua com ela (vira aula própria do B, com o mesmo professor).\n\n${resumoAula(g)}`)) return;
-  try {
-    await enviar(`/grade/${g.id}/excluir-so-a`, {});
-    if (editando && editando.id === g.id) fecharEditor();
-    await aposAlteracao();
-    aviso('msg-edit', `Aula removida só do grupo A; o grupo B mantém: ${resumoAula(g)}`, true);
-  } catch (e) {
-    aviso('msg-edit', e.message, false);
-  }
-}
-
-// grupo B deixa de ter a aula herdada do A (o A não muda)
-async function excluirSoB(g) {
-  if (!confirm(`Excluir esta aula SÓ do grupo B?\nO grupo A continua com ela.\n\n${resumoAula(g)}`)) return;
-  try {
-    await enviar('/grade/excecoes', { ano: g.ano, turno: g.turno, dia_semana: g.dia_semana, numero_aula: g.numero_aula });
-    if (editando && editando.id === g.id) fecharEditor();
-    await aposAlteracao();
-    aviso('msg-edit', `Aula removida só do grupo B: ${resumoAula(g)}`, true);
-  } catch (e) {
-    aviso('msg-edit', e.message, false);
-  }
-}
-
-// desfaz a exclusão só do B: ele volta a herdar a aula do A
-async function restaurarB(g) {
-  try {
-    await remover('/grade/excecoes/' + g.excecao_id);
-    await aposAlteracao();
-    aviso('msg-edit', `Aula restaurada no grupo B: ${resumoAula(g)}`, true);
-  } catch (e) {
-    aviso('msg-edit', e.message, false);
-  }
-}
-
-carregar();
-</script>
+  </div>
+
+  <div class="modal-overlay" id="modal-horario" role="dialog" aria-modal="true" aria-labelledby="modal-horario-title" hidden>
+    <div class="modal">
+      <header class="modal-header" role="none" aria-label="Cabeçalho do modal">
+        <h2 class="modal-title" id="modal-horario-title">Novo horário</h2>
+        <button type="button" class="modal-close" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </header>
+      <form id="form-horario" class="modal-body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="horario-turno" class="form-label">Turno</label>
+            <select id="horario-turno" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="Manha">Manhã</option>
+              <option value="Tarde">Tarde</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="horario-dia" class="form-label">Dia da semana</label>
+            <select id="horario-dia" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="2">Segunda</option>
+              <option value="3">Terça</option>
+              <option value="4">Quarta</option>
+              <option value="5">Quinta</option>
+              <option value="6">Sexta</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="horario-aula" class="form-label">Número da aula</label>
+            <select id="horario-aula" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="1">1ª aula</option>
+              <option value="2">2ª aula</option>
+              <option value="3">3ª aula</option>
+              <option value="4">4ª aula</option>
+              <option value="5">5ª aula</option>
+              <option value="6">6ª aula</option>
+              <option value="7">7ª aula</option>
+              <option value="8">8ª aula</option>
+              <option value="9">Contraturno</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="horario-inicio" class="form-label">Hora inicial</label>
+            <input type="time" id="horario-inicio" class="form-input" required>
+          </div>
+          <div class="form-field">
+            <label for="horario-fim" class="form-label">Hora final</label>
+            <input type="time" id="horario-fim" class="form-input" required>
+          </div>
+        </div>
+      </form>
+      <footer class="modal-footer" role="none" aria-label="Rodapé do modal">
+        <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+        <button type="submit" form="form-horario" class="btn btn-primary">Adicionar</button>
+      </footer>
+    </div>
+  </div>
+
+  <footer class="footer" aria-label="Rodapé">
+    QueryPeriodDB &mdash; Sistema de gerenciamento de grades escolares
+  </footer>
+
+  <script src="app.js"></script>
 </body>
 </html>
